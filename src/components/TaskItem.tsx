@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Circle, CheckCircle, Brain, Zap, Trash2, Pencil, ListChecks } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Circle, CheckCircle, Brain, Zap, Trash2, Pencil, ListChecks, Eye, EyeOff, MapPin, Clock, TrendingUp } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 import type { Task } from '../types';
 
@@ -13,8 +13,11 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isPeekOpen, setIsPeekOpen] = useState(false);
   const setSelectedTaskId = useTaskStore((state) => state.setSelectedTaskId);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const zones = useTaskStore((state) => state.zones);
+  const zoneName = zones.find((z) => z.id === task.zoneId)?.name;
 
   const handleComplete = () => {
     setIsCompleting(true);
@@ -41,7 +44,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
   return (
     <>
       <div
-        className="group flex items-center justify-between p-3 rounded-lg hover:bg-background transition-colors relative overflow-hidden"
+        className="group flex flex-col p-3 rounded-lg hover:bg-background transition-colors relative overflow-hidden"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onContextMenu={handleContextMenuOpen}
@@ -55,53 +58,95 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
           />
         )}
 
-        <div className="flex items-center gap-3 relative z-10 shrink-0">
-          <button
-            type="button"
-            onClick={handleComplete}
-            className="text-muted group-hover:text-foreground/60 transition-colors cursor-pointer"
-          >
-            {isHovered || isCompleting ? (
-              <CheckCircle size={18} />
-            ) : (
-              <Circle size={18} />
-            )}
-          </button>
-        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 relative z-10 shrink-0">
+            <button
+              type="button"
+              onClick={handleComplete}
+              className="text-muted group-hover:text-foreground/60 transition-colors cursor-pointer"
+            >
+              {isHovered || isCompleting ? (
+                <CheckCircle size={18} />
+              ) : (
+                <Circle size={18} />
+              )}
+            </button>
+          </div>
 
-        <div
-          onClick={() => setSelectedTaskId(task.id)}
-          className="cursor-pointer flex-1 flex items-center justify-between min-w-0"
-        >
-          <span
-            className={`text-[14px] tracking-wide transition-colors truncate ${
-              isCompleting
-                ? 'text-white font-medium'
-                : 'text-foreground/90'
-            }`}
+          <div
+            onClick={() => setSelectedTaskId(task.id)}
+            className="cursor-pointer flex-1 flex items-center justify-between min-w-0 ml-3"
           >
-            {isCompleting ? (
-              <span className="flex items-center gap-1.5">
-                COMPLETED <Zap size={14} />
-              </span>
-            ) : (
-              task.title
-            )}
-          </span>
-
-          <div className="items-center gap-3 flex md:hidden md:group-hover:flex relative z-10 shrink-0 ml-3">
-            <span className="text-xs text-muted"><EnergyIcon size={14} /></span>
-            {task.checklist && task.checklist.length > 0 && (
-              <div className="flex items-center gap-1.5 text-[11px] text-white/40 bg-card/5 px-2 py-0.5 rounded-full">
-                <ListChecks size={12} />
-                {task.checklist.filter((i) => i.isDone).length}/{task.checklist.length}
-              </div>
-            )}
-            <span className="text-xs text-muted tabular-nums">
-              {task.estimatedMinutes}m
+            <span
+              className={`text-[14px] tracking-wide transition-colors truncate ${
+                isCompleting
+                  ? 'text-white font-medium'
+                  : 'text-foreground/90'
+              }`}
+            >
+              {isCompleting ? (
+                <span className="flex items-center gap-1.5">
+                  COMPLETED <Zap size={14} />
+                </span>
+              ) : (
+                task.title
+              )}
             </span>
+
+            <div className="items-center gap-2 flex md:hidden md:group-hover:flex relative z-10 shrink-0 ml-3">
+              <span className="text-xs text-muted"><EnergyIcon size={14} /></span>
+              {task.checklist && task.checklist.length > 0 && (
+                <div className="flex items-center gap-1.5 text-[11px] text-white/40 bg-card/5 px-2 py-0.5 rounded-full">
+                  <ListChecks size={12} />
+                  {task.checklist.filter((i) => i.isDone).length}/{task.checklist.length}
+                </div>
+              )}
+              <span className="text-xs text-muted tabular-nums">
+                {task.estimatedMinutes}m
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPeekOpen((prev) => !prev);
+                }}
+                className="opacity-50 md:opacity-0 md:group-hover:opacity-50 hover:!opacity-100 transition-opacity text-muted hover:text-foreground"
+              >
+                {isPeekOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </div>
         </div>
+
+        <AnimatePresence>
+          {isPeekOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2 bg-card/50 backdrop-blur-md rounded-lg p-4 border border-white/10 flex items-center gap-4 text-[11px]">
+                <div className="flex items-center gap-1.5 text-white/40">
+                  <MapPin size={10} className="text-accent/60" />
+                  <span className="uppercase text-[9px] tracking-wider">Zone</span>
+                  <span className="text-white/70 font-medium ml-0.5">{zoneName || 'None'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-white/40">
+                  <Clock size={10} className="text-accent/60" />
+                  <span className="uppercase text-[9px] tracking-wider">Time</span>
+                  <span className="text-white/70 font-medium ml-0.5">{task.estimatedMinutes}m</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-white/40">
+                  <TrendingUp size={10} className="text-accent/60" />
+                  <span className="uppercase text-[9px] tracking-wider">Impact</span>
+                  <span className="text-white/70 font-medium ml-0.5">{task.impact.charAt(0).toUpperCase() + task.impact.slice(1)}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {contextMenu && (

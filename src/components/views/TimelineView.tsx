@@ -1,4 +1,6 @@
 import { useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { CalendarOff } from 'lucide-react';
 import { TaskItem } from '../TaskItem';
 import { FilterBar } from '../FilterBar';
 import { TimelineControls } from '../TimelineControls';
@@ -8,14 +10,13 @@ import { calculatePriority } from '../../lib/priority';
 import { Typewriter } from '../Typewriter';
 import type { Task } from '../../types';
 
-function getDateCategory(task: Task): 'overdue' | 'today' | 'tomorrow' | 'later' {
+function getDateCategory(task: Task): 'overdue' | 'today' | 'tomorrow' | 'later' | 'unscheduled' {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const dateToCheck = task.dueDate || task.startDate;
-  if (!dateToCheck) return 'later';
+  if (!task.dueDate) return 'unscheduled';
 
-  const check = new Date(dateToCheck);
+  const check = new Date(task.dueDate);
   const checkDay = new Date(check.getFullYear(), check.getMonth(), check.getDate());
   const diffMs = checkDay.getTime() - today.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
@@ -32,6 +33,7 @@ export function TimelineView() {
   const completeTask = useTaskStore((state) => state.completeTask);
   const activeFilters = useTaskStore((state) => state.activeFilters);
   const timelineSort = useTaskStore((state) => state.timelineSort);
+  const timelineGroupByDate = useTaskStore((state) => state.timelineGroupByDate);
   const showStatsAndCompleted = useSettingsStore((state) => state.showStatsAndCompleted);
 
   useEffect(() => {
@@ -68,12 +70,32 @@ export function TimelineView() {
     });
   }, [filteredTasks, timelineSort]);
 
-  const overdue = sorted.filter((t) => getDateCategory(t) === 'overdue');
-  const today = sorted.filter((t) => getDateCategory(t) === 'today');
-  const tomorrow = sorted.filter((t) => getDateCategory(t) === 'tomorrow');
-  const later = sorted.filter((t) => getDateCategory(t) === 'later');
+  const groups = useMemo(() => {
+    if (!timelineGroupByDate) return null;
 
-  const hasAny = overdue.length > 0 || today.length > 0 || tomorrow.length > 0 || later.length > 0;
+    const withDate = sorted.filter((t) => t.dueDate !== undefined);
+    const graveyard = sorted.filter((t) => t.dueDate === undefined);
+
+    return {
+      overdue: withDate.filter((t) => getDateCategory(t) === 'overdue'),
+      today: withDate.filter((t) => getDateCategory(t) === 'today'),
+      tomorrow: withDate.filter((t) => getDateCategory(t) === 'tomorrow'),
+      later: withDate.filter((t) => getDateCategory(t) === 'later'),
+      graveyard,
+    };
+  }, [sorted, timelineGroupByDate]);
+
+  const hasAny = sorted.length > 0;
+
+  const renderTaskList = (taskList: Task[]) => (
+    <motion.div layout className="flex flex-col gap-2">
+      {taskList.map((task) => (
+        <motion.div layout key={task.id}>
+          <TaskItem task={task} onComplete={completeTask} />
+        </motion.div>
+      ))}
+    </motion.div>
+  );
 
   if (!hasAny) {
     return (
@@ -98,57 +120,59 @@ export function TimelineView() {
       </div>
       <FilterBar />
 
-      {overdue.length > 0 && (
-        <>
-          <div className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-4 mt-8">
-            Overdue
-          </div>
-          <div className="flex flex-col gap-1">
-            {overdue.map((task) => (
-              <TaskItem key={task.id} task={task} onComplete={completeTask} />
-            ))}
-          </div>
-        </>
-      )}
+      {!timelineGroupByDate ? (
+        <motion.div layout className="flex flex-col gap-2 mt-8">
+          {renderTaskList(sorted)}
+        </motion.div>
+      ) : groups ? (
+        <div className="space-y-8 mt-8">
+          {groups.overdue.length > 0 && (
+            <div>
+              <div className="text-[10px] tracking-[0.2em] uppercase text-muted/50 mb-2">
+                Overdue
+              </div>
+              {renderTaskList(groups.overdue)}
+            </div>
+          )}
 
-      {today.length > 0 && (
-        <>
-          <div className="text-xs font-semibold text-accent uppercase tracking-widest mb-4 mt-8">
-            Today
-          </div>
-          <div className="flex flex-col gap-1">
-            {today.map((task) => (
-              <TaskItem key={task.id} task={task} onComplete={completeTask} />
-            ))}
-          </div>
-        </>
-      )}
+          {groups.today.length > 0 && (
+            <div>
+              <div className="text-[10px] tracking-[0.2em] uppercase text-muted/50 mb-2">
+                Today
+              </div>
+              {renderTaskList(groups.today)}
+            </div>
+          )}
 
-      {tomorrow.length > 0 && (
-        <>
-          <div className="text-xs font-semibold text-muted uppercase tracking-widest mb-4 mt-8">
-            Tomorrow
-          </div>
-          <div className="flex flex-col gap-1">
-            {tomorrow.map((task) => (
-              <TaskItem key={task.id} task={task} onComplete={completeTask} />
-            ))}
-          </div>
-        </>
-      )}
+          {groups.tomorrow.length > 0 && (
+            <div>
+              <div className="text-[10px] tracking-[0.2em] uppercase text-muted/50 mb-2">
+                Tomorrow
+              </div>
+              {renderTaskList(groups.tomorrow)}
+            </div>
+          )}
 
-      {later.length > 0 && (
-        <>
-          <div className="text-xs font-semibold text-muted uppercase tracking-widest mb-4 mt-8">
-            Later This Week
-          </div>
-          <div className="flex flex-col gap-1">
-            {later.map((task) => (
-              <TaskItem key={task.id} task={task} onComplete={completeTask} />
-            ))}
-          </div>
-        </>
-      )}
+          {groups.later.length > 0 && (
+            <div>
+              <div className="text-[10px] tracking-[0.2em] uppercase text-muted/50 mb-2">
+                Later This Week
+              </div>
+              {renderTaskList(groups.later)}
+            </div>
+          )}
+
+          {groups.graveyard.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-muted/50 mb-2">
+                <CalendarOff size={10} />
+                Unscheduled
+              </div>
+              {renderTaskList(groups.graveyard)}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

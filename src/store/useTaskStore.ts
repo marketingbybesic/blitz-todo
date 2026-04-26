@@ -14,6 +14,7 @@ interface TaskState {
   brainDumpSorted: boolean;
   activeFilters: { deepWork: boolean; highImpact: boolean; shortTask: boolean; longTask: boolean };
   toggleFilter: (type: 'deepWork' | 'highImpact' | 'shortTask' | 'longTask') => void;
+  clearFilters: () => void;
   isCaptureOpen: boolean;
   toggleCaptureModal: () => void;
   selectedTaskId: string | null;
@@ -38,6 +39,18 @@ interface TaskState {
   toggleBrainDumpSort: () => void;
   timelineSort: { key: SortKey; direction: SortDirection };
   setTimelineSort: (key: SortKey, direction: SortDirection) => void;
+  timelineGroupByDate: boolean;
+  toggleTimelineGroupByDate: () => void;
+  quickCaptureQuery: string;
+  quickCaptureSelectedZoneId: string | null;
+  setQuickCaptureQuery: (query: string) => void;
+  setQuickCaptureSelectedZoneId: (id: string | null) => void;
+  submitQuickCapture: () => Promise<void>;
+  morningTriageDismissed: boolean;
+  isMorningTriageOpen: boolean;
+  openMorningTriage: () => void;
+  dismissMorningTriage: () => void;
+  markMorningTriageChecked: () => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -49,6 +62,11 @@ export const useTaskStore = create<TaskState>()(
     brainDumpSorted: false,
     activeFilters: { deepWork: false, highImpact: false, shortTask: false, longTask: false },
     timelineSort: { key: 'priority' as SortKey, direction: 'desc' as SortDirection },
+    timelineGroupByDate: true,
+    quickCaptureQuery: '',
+    quickCaptureSelectedZoneId: null,
+    morningTriageDismissed: false,
+    isMorningTriageOpen: false,
     isCaptureOpen: false,
     selectedTaskId: null,
     zones: [],
@@ -176,6 +194,63 @@ export const useTaskStore = create<TaskState>()(
       set({ timelineSort: { key, direction } });
     },
 
+    toggleTimelineGroupByDate: () => {
+      set((state) => ({ timelineGroupByDate: !state.timelineGroupByDate }));
+    },
+
+    setQuickCaptureQuery: (query) => set({ quickCaptureQuery: query }),
+
+    setQuickCaptureSelectedZoneId: (id) => set({ quickCaptureSelectedZoneId: id }),
+
+    submitQuickCapture: async () => {
+      const state = get();
+      const query = state.quickCaptureQuery.trim();
+      if (!query) return;
+
+      let zoneId = state.quickCaptureSelectedZoneId;
+      let title = query;
+
+      if (!zoneId) {
+        for (const zone of state.zones) {
+          const zoneName = zone.name.trim();
+          if (query.toLowerCase().startsWith(zoneName.toLowerCase())) {
+            zoneId = zone.id;
+            title = query.slice(zoneName.length).trim();
+            title = title.replace(/^[:\- ]+/, '').trim();
+            break;
+          }
+        }
+      }
+
+      await state.addTask({
+        title: title || query,
+        energyLevel: 'light-work',
+        estimatedMinutes: 15,
+        isTarget: false,
+        status: 'todo',
+        impact: 'medium',
+        dueDate: undefined,
+        content: undefined,
+        zoneId: zoneId || undefined,
+        startDate: undefined,
+        checklist: [],
+      });
+
+      set({ quickCaptureQuery: '', quickCaptureSelectedZoneId: null, isCaptureOpen: false });
+    },
+
+    openMorningTriage: () => {
+      set({ isMorningTriageOpen: true, morningTriageDismissed: true });
+    },
+
+    dismissMorningTriage: () => {
+      set({ isMorningTriageOpen: false, morningTriageDismissed: true });
+    },
+
+    markMorningTriageChecked: () => {
+      set({ morningTriageDismissed: true });
+    },
+
     toggleFilter: (type) => {
       set((state) => ({
         activeFilters: {
@@ -183,6 +258,10 @@ export const useTaskStore = create<TaskState>()(
           [type]: !state.activeFilters[type],
         },
       }));
+    },
+
+    clearFilters: () => {
+      set({ activeFilters: { deepWork: false, highImpact: false, shortTask: false, longTask: false } });
     },
 
     toggleCaptureModal: () => {

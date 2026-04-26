@@ -1,43 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart, Brain, Zap, Target } from 'lucide-react';
+import { X, ArrowUpRight } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 
 export function QuickCapture() {
   const isOpen = useTaskStore((state) => state.isCaptureOpen);
   const toggleCaptureModal = useTaskStore((state) => state.toggleCaptureModal);
-  const [title, setTitle] = useState('');
-  const [energyLevel, setEnergyLevel] = useState<'light-work' | 'deep-work'>('light-work');
-  const [estimatedMinutes, setEstimatedMinutes] = useState(15);
-  const [isTarget, setIsTarget] = useState(false);
-  const [impact, setImpact] = useState<'low' | 'medium' | 'high'>('medium');
-  const addTask = useTaskStore((state) => state.addTask);
+  const query = useTaskStore((state) => state.quickCaptureQuery);
+  const setQuery = useTaskStore((state) => state.setQuickCaptureQuery);
+  const selectedZoneId = useTaskStore((state) => state.quickCaptureSelectedZoneId);
+  const setSelectedZoneId = useTaskStore((state) => state.setQuickCaptureSelectedZoneId);
+  const submitQuickCapture = useTaskStore((state) => state.submitQuickCapture);
+  const zones = useTaskStore((state) => state.zones);
 
   const close = useCallback(() => {
     if (isOpen) toggleCaptureModal();
-    setTitle('');
-    setEnergyLevel('light-work');
-    setEstimatedMinutes(15);
-    setIsTarget(false);
-    setImpact('medium');
-  }, [isOpen, toggleCaptureModal]);
+    setQuery('');
+    setSelectedZoneId(null);
+  }, [isOpen, toggleCaptureModal, setQuery, setSelectedZoneId]);
 
   const handleSubmit = useCallback(async () => {
-    if (!title.trim()) return;
-    await addTask({
-      title: title.trim(),
-      energyLevel,
-      estimatedMinutes,
-      isTarget,
-      status: 'todo',
-      impact,
-      dueDate: undefined,
-      content: undefined,
-      zoneId: undefined,
-      startDate: undefined,
-    });
-    close();
-  }, [title, energyLevel, estimatedMinutes, isTarget, impact, addTask, close]);
+    await submitQuickCapture();
+  }, [submitQuickCapture]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,89 +40,78 @@ export function QuickCapture() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, close, handleSubmit]);
 
+  const suggestedZones = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    return zones.filter((z) => q.startsWith(z.name.toLowerCase()));
+  }, [query, zones]);
+
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[20vh]"
+          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-2xl flex flex-col items-center pt-[20vh]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              if (isOpen) toggleCaptureModal();
-            }
+            if (e.target === e.currentTarget) close();
           }}
         >
-          <motion.div
-            className="w-full max-w-2xl bg-background border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.4 }}
-          >
-            <input
-              type="text"
-              autoFocus
-              placeholder="What needs to get done?"
-              className="text-2xl bg-transparent text-white placeholder:text-white/20 p-6 w-full focus:outline-none"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+          <div className="relative max-w-2xl w-[90%] mx-auto">
+            <button
+              type="button"
+              onClick={close}
+              className="absolute -top-12 right-0 p-2 text-white/40 hover:text-white/80 transition-colors rounded-lg hover:bg-white/5"
+            >
+              <X size={20} />
+            </button>
 
-            <div className="flex items-center justify-between bg-card px-6 py-3 border-t border-white/5">
-              <div className="flex items-center gap-2">
+            <div className="bg-card/50 border border-white/10 rounded-2xl p-6 shadow-2xl">
+              <textarea
+                autoFocus
+                placeholder="What needs to get done?"
+                className="text-foreground text-2xl font-medium placeholder:text-white/20 focus:outline-none min-h-[200px] resize-none bg-transparent w-full"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+
+              <div className="flex justify-end mt-4">
                 <button
                   type="button"
-                  onClick={() => setEnergyLevel(energyLevel === 'deep-work' ? 'light-work' : 'deep-work')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
-                    energyLevel === 'deep-work'
-                      ? 'bg-accent/20 text-accent shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_30%,transparent)]'
-                      : 'text-muted hover:text-white/60'
-                  }`}
+                  onClick={handleSubmit}
+                  disabled={!query.trim()}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  {energyLevel === 'deep-work' ? <Brain size={12} /> : <Zap size={12} />}
-                  {energyLevel === 'deep-work' ? 'Deep Work' : 'Quick Win'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsTarget((prev) => !prev)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
-                    isTarget
-                      ? 'bg-accent/20 text-accent shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_30%,transparent)]'
-                      : 'text-muted hover:text-white/60'
-                  }`}
-                >
-                  <Target size={12} />
-                  Make Target
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setImpact((prev) => (prev === 'high' ? 'low' : prev === 'low' ? 'medium' : 'high'))}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
-                    impact === 'high'
-                      ? 'bg-accent/20 text-accent shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_30%,transparent)]'
-                      : 'text-muted hover:text-white/60'
-                  }`}
-                >
-                  <BarChart size={12} />
-                  {impact === 'high' ? 'High' : impact === 'medium' ? 'Medium' : 'Low'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setEstimatedMinutes((prev) => Math.min(480, prev + 15))}
-                  className="px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-white/60 transition-all"
-                >
-                  +{estimatedMinutes}m
+                  <ArrowUpRight size={16} />
+                  Capture
                 </button>
               </div>
-
-              <span className="text-xs text-muted/60">Press Enter to save</span>
             </div>
-          </motion.div>
+
+            {(suggestedZones.length > 0 || selectedZoneId) && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-white/40">
+                <span className="text-white/30 text-xs uppercase tracking-wider">Zone</span>
+                {selectedZoneId ? (
+                  <span className="text-accent font-medium">
+                    {zones.find((z) => z.id === selectedZoneId)?.name}
+                  </span>
+                ) : (
+                  suggestedZones.map((zone) => (
+                    <button
+                      key={zone.id}
+                      type="button"
+                      onClick={() => setSelectedZoneId(zone.id)}
+                      className="px-2 py-0.5 rounded-md text-xs bg-white/5 text-white/50 hover:text-white/80 transition-colors"
+                    >
+                      {zone.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

@@ -33,7 +33,7 @@ export const TaskSchema = z.object({
   dueDate: z.string().datetime().optional(),
   impact: z.enum(['high', 'medium', 'low']).default('medium'),
   status: z.enum(['todo', 'in_progress', 'done']).default('todo'),
-  checklist: z.array(ChecklistItemSchema).default([]),
+  checklist: z.array(ChecklistItemSchema),
   completedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
 });

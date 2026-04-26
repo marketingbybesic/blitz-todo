@@ -1,5 +1,6 @@
-import { Zap, Sparkles, MoreVertical } from 'lucide-react';
+import { Zap, Sparkles, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Logo from '/blitz-logo.svg';
 import { TodayView } from './views/TodayView';
 import { TimelineView } from './views/TimelineView';
 import { BrainDumpView } from './views/BrainDumpView';
@@ -11,6 +12,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 
 export function Dashboard() {
   const currentView = useTaskStore((state) => state.currentView);
+  const isSidebarOpen = useTaskStore((state) => state.isSidebarOpen);
   const toggleBrainDumpSort = useTaskStore((state) => state.toggleBrainDumpSort);
   const toggleBlitzMode = useTaskStore((state) => state.toggleBlitzMode);
   const toggleCaptureModal = useTaskStore((state) => state.toggleCaptureModal);
@@ -26,7 +28,7 @@ export function Dashboard() {
             <button
               type="button"
               onClick={toggleBlitzMode}
-              className="px-3 py-1 text-[11px] font-bold rounded-full bg-accent text-white flex items-center gap-1"
+              className="px-3 py-1 text-[11px] font-bold rounded-full bg-accent text-white flex items-center gap-1 hover:shadow-[0_0_20px_color-mix(in_srgb,var(--accent)_50%,transparent)] transition-shadow duration-300"
             >
               <Zap size={12} />
               Burst
@@ -108,39 +110,33 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] md:min-h-screen bg-background">
+    <div className={`flex-1 flex flex-col h-screen overflow-hidden bg-background transition-[padding-left] duration-300 ${isSidebarOpen ? 'md:pl-64' : ''}`}>
       <header data-tauri-drag-region="true" className="relative h-16 border-b border-white/5 flex items-center px-8 justify-between pt-4 select-none cursor-default">
-        {/* Mobile centered logo */}
-        <div className="flex md:hidden absolute inset-0 items-center justify-center pointer-events-none">
-          <Zap size={24} className="text-accent" />
-        </div>
-
         {/* Desktop left */}
-        <div className="hidden md:flex items-center gap-3">
-          <motion.button
-            type="button"
-            onClick={toggleSidebar}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="text-white/40 hover:text-white transition-colors"
-          >
-            <Zap size={20} />
-          </motion.button>
-          <h2 className="text-sm font-medium text-foreground/80">{header.title}</h2>
-          <button type="button" onClick={toggleSettingsModal} className="text-white/40 hover:text-white transition-colors">
-            <MoreVertical size={20} />
-          </button>
+        <div className="hidden md:flex items-center">
+          <img src={Logo} alt="Blitz" className="h-7 w-7" />
         </div>
 
         {/* Desktop right */}
         <div className="hidden md:flex items-center gap-3">
-          <span className="text-muted text-xs mr-4">
-            Press {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd+K' : 'Ctrl+K'}
-          </span>
-          {header.action}
+          <button
+            type="button"
+            onClick={toggleCaptureModal}
+            className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1 text-xs text-muted hover:bg-white/10 hover:text-white/80 transition-colors"
+          >
+            <Search size={12} />
+            <span className="hidden lg:inline">
+              {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd+K' : 'Ctrl+K'}
+            </span>
+          </button>
+          {header.action && (
+            <div className="ml-1">
+              {header.action}
+            </div>
+          )}
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
+      <main className="flex-1 overflow-y-auto pb-24 md:pb-8 pt-8 md:pt-0">
         {renderView()}
       </main>
     </div>
