@@ -51,7 +51,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               />
             )}
             <img
-              src="/blitz-logo.png"
+              src="/blitz-logo.svg"
               alt="Blitz"
               className="relative h-16 w-auto object-contain mb-2"
               style={{ filter: slide.glow ? 'drop-shadow(0 0 24px color-mix(in srgb, var(--accent) 60%, transparent))' : 'opacity(0.7)' }}

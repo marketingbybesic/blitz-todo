@@ -31,7 +31,7 @@ export function MobileNav() {
       {/* Brand bar on mobile (replaces the desktop sidebar header) */}
       <div className="fixed top-0 left-0 right-0 h-12 flex items-center justify-between px-5 bg-background/80 backdrop-blur-xl border-b border-border z-50 md:hidden">
         <div className="flex items-center gap-2">
-          <img src="/blitz-logo.png" alt="Blitz" className="h-6 w-auto object-contain" />
+          <img src="/blitz-logo.svg" alt="Blitz" className="h-6 w-auto object-contain" />
           <span className="text-xs font-bold tracking-widest text-foreground/70 uppercase">Blitz</span>
         </div>
       </div>

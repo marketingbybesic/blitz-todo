@@ -38,7 +38,7 @@ export function Sidebar() {
           >
             <div className="flex items-center gap-2.5">
               <img
-                src="/blitz-logo.png"
+                src="/blitz-logo.svg"
                 alt="Blitz"
                 className="h-7 w-auto object-contain"
                 style={{ filter: 'drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 50%, transparent))' }}
