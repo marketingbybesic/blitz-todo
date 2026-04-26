@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { useTaskStore } from './store/useTaskStore';
 import { BlitzWidget } from './components/BlitzWidget';
@@ -10,14 +10,27 @@ import { MorningTriage } from './components/MorningTriage';
 import { TaskDetailPane } from './components/TaskDetailPane';
 import { Toast } from './components/Toast';
 import { SettingsModal } from './components/SettingsModal';
+import { CommandPalette } from './components/CommandPalette';
 
 export default function App() {
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const burstModeActive = useTaskStore((state) => state.burstModeActive);
   const currentView = useTaskStore((state) => state.currentView);
   const tasks = useTaskStore((state) => state.tasks);
   const morningTriageDismissed = useTaskStore((state) => state.morningTriageDismissed);
   const openMorningTriage = useTaskStore((state) => state.openMorningTriage);
   const markMorningTriageChecked = useTaskStore((state) => state.markMorningTriageChecked);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (currentView === 'today' && !morningTriageDismissed) {
@@ -71,6 +84,7 @@ export default function App() {
       <TaskDetailPane />
       <Toast />
       <SettingsModal />
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
     </>
   );
 }

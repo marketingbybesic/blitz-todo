@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { z } from 'zod';
 import { db } from '../lib/db';
 import type { Task, Zone } from '../types';
 
@@ -204,24 +205,45 @@ export const useTaskStore = create<TaskState>()(
 
     submitQuickCapture: async () => {
       const state = get();
-      const query = state.quickCaptureQuery.trim();
+      let query = state.quickCaptureQuery.trim();
       if (!query) return;
 
-      let zoneId = state.quickCaptureSelectedZoneId;
-      let title = query;
+      const hashtagRegex = /#([\w-]+)/g;
+      const hashtags: string[] = [];
+      let match: RegExpExecArray | null;
+      while ((match = hashtagRegex.exec(query)) !== null) {
+        hashtags.push(match[1].toLowerCase());
+      }
+      query = query.replace(hashtagRegex, '').trim();
 
-      if (!zoneId) {
-        for (const zone of state.zones) {
-          const zoneName = zone.name.trim();
-          if (query.toLowerCase().startsWith(zoneName.toLowerCase())) {
-            zoneId = zone.id;
-            title = query.slice(zoneName.length).trim();
-            title = title.replace(/^[:\- ]+/, '').trim();
+      if (!query) return;
+
+      let zoneId: string | undefined = state.quickCaptureSelectedZoneId || undefined;
+      if (hashtags.length > 0 && state.zones.length > 0) {
+        for (const tag of hashtags) {
+          const matched = state.zones.find(
+            (z) => z.name.toLowerCase().replace(/\s+/g, '-') === tag || z.name.toLowerCase().replace(/\s+/g, '') === tag
+          );
+          if (matched) {
+            zoneId = matched.id;
             break;
           }
         }
       }
 
+      const taskSchema = z.object({
+        title: z.string().min(1),
+        description: z.string().default(''),
+        status: z.enum(['todo', 'in-progress', 'done']).default('todo'),
+        energyLevel: z.enum(['deep-work', 'normal']).default('normal'),
+        estimatedMinutes: z.number().int().min(1).default(30),
+        impact: z.enum(['high', 'normal', 'low']).default('normal'),
+        zoneId: z.string().optional(),
+      });
+
+      const parsed = taskSchema.safeParse({
+        title: query,
+        description: '',
       await state.addTask({
         title: title || query,
         energyLevel: 'light-work',
