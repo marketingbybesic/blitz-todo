@@ -64,6 +64,9 @@ export default function App() {
   }, [currentView, morningTriageDismissed, tasks.length, openMorningTriage, markMorningTriageChecked]);
 
   useEffect(() => {
+    // Only call Tauri window APIs when running inside Tauri (not browser dev/test)
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (!isTauri) return;
     const win = getCurrentWindow();
     if (burstModeActive) {
       win.setMinSize(null);
