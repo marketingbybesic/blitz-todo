@@ -1,130 +1,71 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
 
 interface OnboardingProps {
   onComplete: () => void;
 }
 
 const slides = [
-  {
-    id: 1,
-    heading: 'BLITZ.',
-    subheading: 'Execute at the speed of thought.',
-    glow: true,
-  },
-  {
-    id: 2,
-    heading: 'Quick Capture',
-    subheading: 'Press ⌘K anywhere to capture a task in under 2 seconds',
-    glow: false,
-  },
-  {
-    id: 3,
-    heading: 'Burst Mode',
-    subheading: 'Hit Burst Mode to enter a distraction-free execution tunnel',
-    glow: false,
-  },
-  {
-    id: 4,
-    heading: 'Zones',
-    subheading: 'Organize work into Zones — your projects, your contexts',
-    glow: false,
-  },
-  {
-    id: 5,
-    heading: 'Ready.',
-    subheading: 'Your brain is free. Let\'s build something.',
-    glow: false,
-    isLast: true,
-  },
+  { id: 1, heading: 'BLITZ.',         sub: 'Execute at the speed of thought.', glow: true },
+  { id: 2, heading: 'Quick Capture',  sub: 'Press ⌘K anywhere to capture a task in under 2 seconds.' },
+  { id: 3, heading: 'Burst Mode',     sub: 'Enter a distraction-free execution tunnel. One task. Full focus.' },
+  { id: 4, heading: 'Zones',          sub: 'Organise work by project and context. No more scattered lists.' },
+  { id: 5, heading: 'You\'re ready.', sub: 'Your brain is free. Let\'s build something.' },
 ];
-
-const slideVariants = {
-  enter: { x: '100%', opacity: 0 },
-  center: { x: 0, opacity: 1 },
-  exit: { x: '-100%', opacity: 0 },
-};
 
 export function Onboarding({ onComplete }: OnboardingProps) {
   if (localStorage.getItem('blitz-onboarded')) return null;
 
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const slide = slides[index];
+  const [dir, setDir]     = useState(1);
   const isLast = index === slides.length - 1;
+  const slide  = slides[index];
 
   const advance = () => {
-    if (isLast) {
-      localStorage.setItem('blitz-onboarded', 'true');
-      onComplete();
-      return;
-    }
-    setDirection(1);
-    setIndex((i) => i + 1);
+    if (isLast) { localStorage.setItem('blitz-onboarded', 'true'); onComplete(); return; }
+    setDir(1); setIndex(i => i + 1);
   };
-
-  const skip = () => {
-    localStorage.setItem('blitz-onboarded', 'true');
-    onComplete();
-  };
+  const skip = () => { localStorage.setItem('blitz-onboarded', 'true'); onComplete(); };
 
   return (
     <motion.div
       className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center overflow-hidden"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      {/* Slide content */}
-      <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden">
-        <AnimatePresence mode="wait" custom={direction}>
+      {/* Slide area */}
+      <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden px-8">
+        <AnimatePresence mode="wait" custom={dir}>
           <motion.div
             key={slide.id}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-            className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center gap-6"
+            initial={{ x: '60%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '-60%', opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-6 text-center px-8"
           >
             {slide.glow && (
               <div
                 className="absolute inset-0 pointer-events-none"
-                style={{
-                  background:
-                    'radial-gradient(ellipse 60% 40% at 50% 50%, color-mix(in srgb, var(--accent) 18%, transparent), transparent)',
-                }}
+                style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 50%, color-mix(in srgb, var(--accent) 18%, transparent), transparent)' }}
               />
             )}
-            <h1
-              className={`relative text-5xl font-black tracking-tight text-foreground ${
-                slide.glow ? 'drop-shadow-[0_0_32px_color-mix(in_srgb,var(--accent)_60%,transparent)]' : ''
-              }`}
-            >
+            <img
+              src="/blitz-logo.png"
+              alt="Blitz"
+              className="relative h-16 w-auto object-contain mb-2"
+              style={{ filter: slide.glow ? 'drop-shadow(0 0 24px color-mix(in srgb, var(--accent) 60%, transparent))' : 'opacity(0.7)' }}
+            />
+            <h1 className={`relative text-4xl font-black tracking-tight text-foreground ${slide.glow ? 'drop-shadow-[0_0_32px_color-mix(in_srgb,var(--accent)_60%,transparent)]' : ''}`}>
               {slide.heading}
             </h1>
-            <p className="relative text-lg text-muted max-w-md leading-relaxed">
-              {slide.subheading}
-            </p>
-            {slide.isLast && (
-              <motion.button
-                type="button"
-                onClick={advance}
-                className="relative mt-4 px-8 py-3 rounded-xl font-semibold text-sm bg-accent text-background hover:opacity-90 transition-opacity"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                Start
-              </motion.button>
-            )}
+            <p className="relative text-base text-muted max-w-sm leading-relaxed">{slide.sub}</p>
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Dot indicators */}
-      <div className="flex items-center gap-2 pb-8">
+      <div className="flex items-center gap-2 pb-6">
         {slides.map((_, i) => (
           <div
             key={i}
@@ -132,17 +73,16 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             style={{
               width: i === index ? 20 : 6,
               height: 6,
-              background:
-                i === index
-                  ? 'var(--accent)'
-                  : 'color-mix(in srgb, var(--foreground) 20%, transparent)',
+              background: i === index
+                ? 'var(--accent)'
+                : 'color-mix(in srgb, var(--foreground) 15%, transparent)',
             }}
           />
         ))}
       </div>
 
-      {/* Nav buttons */}
-      <div className="flex items-center justify-between w-full max-w-sm px-8 pb-10">
+      {/* Bottom nav — Skip always left, Next/Start always right, same row always */}
+      <div className="flex items-center justify-between w-full max-w-sm px-8 pb-10 gap-4">
         <button
           type="button"
           onClick={skip}
@@ -150,15 +90,14 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         >
           Skip
         </button>
-        {!isLast && (
-          <button
-            type="button"
-            onClick={advance}
-            className="px-6 py-2 rounded-lg text-sm font-medium bg-card border border-border text-foreground hover:border-accent/50 hover:text-accent transition-all"
-          >
-            Next
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={advance}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-background hover:opacity-90 active:scale-95 transition-all"
+        >
+          {isLast ? 'Start' : 'Next'}
+          <ChevronRight size={15} />
+        </button>
       </div>
     </motion.div>
   );
