@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface SettingsState {
   accentColor: string;
@@ -12,23 +13,40 @@ interface SettingsState {
   applyAccentColor: (color: string) => void;
 }
 
-export const useSettingsStore = create<SettingsState>()((set) => ({
-  accentColor: '#a855f7',
-  fabAlignment: 'right',
-  isSettingsOpen: false,
-  showStatsAndCompleted: false,
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set) => ({
+      accentColor: '#a855f7',
+      fabAlignment: 'right',
+      isSettingsOpen: false,
+      showStatsAndCompleted: false,
 
-  setAccentColor: (color) => set({ accentColor: color }),
+      setAccentColor: (color) => set({ accentColor: color }),
 
-  setFabAlignment: (alignment) => set({ fabAlignment: alignment }),
+      setFabAlignment: (alignment) => set({ fabAlignment: alignment }),
 
-  toggleSettingsModal: () =>
-    set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
+      toggleSettingsModal: () =>
+        set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
 
-  toggleStats: () =>
-    set((state) => ({ showStatsAndCompleted: !state.showStatsAndCompleted })),
+      toggleStats: () =>
+        set((state) => ({ showStatsAndCompleted: !state.showStatsAndCompleted })),
 
-  applyAccentColor: (color) => {
-    document.documentElement.style.setProperty('--accent', color);
-  },
-}));
+      applyAccentColor: (color) => {
+        document.documentElement.style.setProperty('--accent', color);
+      },
+    }),
+    {
+      name: 'blitz-settings',
+      partialize: (state) => ({
+        accentColor: state.accentColor,
+        fabAlignment: state.fabAlignment,
+        showStatsAndCompleted: state.showStatsAndCompleted,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.accentColor) {
+          document.documentElement.style.setProperty('--accent', state.accentColor);
+        }
+      },
+    }
+  )
+);

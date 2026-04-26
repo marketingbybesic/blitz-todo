@@ -11,15 +11,25 @@
     --muted: #a1a1aa; /* Zinc 400 */
     --accent: #a855f7; /* Neon Purple */
   }
+  .light {
+    --background: #ffffff;
+    --foreground: #09090b;
+    --card: #f4f4f5; /* Zinc 100 */
+    --border: #e4e4e7; /* Zinc 200 */
+    --muted: #71717a; /* Zinc 500 */
+    --accent: #a855f7; /* Neon Purple */
+  }
   .midnight {
     --background: #000000;
     --card: #000000;
     --border: #18181b;
     --foreground: #ffffff;
+    --muted: #a1a1aa;
     --accent: #a855f7;
   }
   body {
-    @apply bg-black text-foreground antialiased font-sans relative overflow-x-hidden;
+    background-color: var(--background);
+    @apply text-foreground antialiased font-sans relative overflow-x-hidden;
   }
 }
 

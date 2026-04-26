@@ -107,8 +107,7 @@ export const useTaskStore = create<TaskState>()(
     },
 
     completeTask: async (id) => {
-      const allTasks = await db.tasks.toArray();
-      const task = allTasks.find((t) => t.id === id);
+      const task = get().tasks.find((t) => t.id === id);
       if (!task) return;
 
       const state = get();
@@ -118,7 +117,7 @@ export const useTaskStore = create<TaskState>()(
       const timer = setTimeout(() => {
         set({ lastCompletedTask: null });
       }, 5000);
-      (set as unknown as (fn: (s: typeof state) => Partial<typeof state>) => void)((s) => ({ ...s, _undoTimer: timer }));
+      set({ _undoTimer: timer });
 
       await db.tasks.update(id, { status: 'done', completedAt: new Date().toISOString() });
       await get().loadTasks();
@@ -231,21 +230,8 @@ export const useTaskStore = create<TaskState>()(
         }
       }
 
-      const taskSchema = z.object({
-        title: z.string().min(1),
-        description: z.string().default(''),
-        status: z.enum(['todo', 'in-progress', 'done']).default('todo'),
-        energyLevel: z.enum(['deep-work', 'normal']).default('normal'),
-        estimatedMinutes: z.number().int().min(1).default(30),
-        impact: z.enum(['high', 'normal', 'low']).default('normal'),
-        zoneId: z.string().optional(),
-      });
-
-      const parsed = taskSchema.safeParse({
-        title: query,
-        description: '',
       await state.addTask({
-        title: title || query,
+        title: query,
         energyLevel: 'light-work',
         estimatedMinutes: 15,
         isTarget: false,
