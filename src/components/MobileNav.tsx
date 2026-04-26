@@ -1,4 +1,5 @@
 import { GitCommit, Calendar, ArchiveRestore, Layers, Lock, Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useTaskStore } from '../store/useTaskStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
@@ -34,12 +35,12 @@ export function MobileNav() {
       <button
         type="button"
         onClick={toggleCaptureModal}
-        className={`fixed md:hidden z-50 ${fabPosition} w-14 h-14 bg-accent rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.5)] text-white hover:scale-110 transition-transform`}
+        className={`fixed md:hidden z-50 ${fabPosition} w-14 h-14 bg-accent rounded-full flex items-center justify-center shadow-[0_0_20px_var(--accent)] text-foreground hover:scale-110 transition-transform`}
       >
         <Plus size={24} />
       </button>
 
-      <nav className="grid grid-cols-5 items-center w-full px-2 md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#09090b]/90 backdrop-blur-xl border-t border-white/10">
+      <nav className="grid grid-cols-5 items-center w-full px-2 md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
         {tabs.map((tab) => {
           const isActive = currentView === tab.view;
           return (
@@ -47,12 +48,19 @@ export function MobileNav() {
               key={tab.view}
               type="button"
               onClick={() => setCurrentView(tab.view)}
-              className={`flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200 ${
-                isActive ? 'text-accent' : 'text-muted hover:text-foreground'
-              }`}
+              className="relative flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200"
             >
-              <tab.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-              <span className="text-xs mt-1 font-medium tracking-wide">{tab.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="pill"
+                  className="absolute inset-1 rounded-xl bg-accent/10 shadow-[0_0_12px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <div className={`relative z-10 flex flex-col items-center gap-1 ${isActive ? 'text-accent' : 'text-muted hover:text-foreground'}`}>
+                <tab.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+                <span className="text-xs mt-1 font-medium tracking-wide">{tab.label}</span>
+              </div>
             </button>
           );
         })}

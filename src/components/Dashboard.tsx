@@ -1,18 +1,20 @@
-import { Zap, PanelLeft, Sparkles, MoreVertical } from 'lucide-react';
+import { Zap, Sparkles, MoreVertical } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { TodayView } from './views/TodayView';
 import { TimelineView } from './views/TimelineView';
 import { BrainDumpView } from './views/BrainDumpView';
 import { ZonesView } from './views/ZonesView';
+import { VaultView } from './views/VaultView';
 import { Typewriter, shortcut } from './Typewriter';
 import { useTaskStore } from '../store/useTaskStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function Dashboard() {
-  const toggleSidebar = useTaskStore((state) => state.toggleSidebar);
   const currentView = useTaskStore((state) => state.currentView);
   const toggleBrainDumpSort = useTaskStore((state) => state.toggleBrainDumpSort);
   const toggleBlitzMode = useTaskStore((state) => state.toggleBlitzMode);
   const toggleCaptureModal = useTaskStore((state) => state.toggleCaptureModal);
+  const toggleSidebar = useTaskStore((state) => state.toggleSidebar);
   const toggleSettingsModal = useSettingsStore((state) => state.toggleSettingsModal);
 
   const renderHeader = () => {
@@ -24,10 +26,10 @@ export function Dashboard() {
             <button
               type="button"
               onClick={toggleBlitzMode}
-              className="bg-accent text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform flex items-center gap-1.5"
+              className="px-3 py-1 text-[11px] font-bold rounded-full bg-accent text-white flex items-center gap-1"
             >
-              <Zap size={14} />
-              Burst Mode
+              <Zap size={12} />
+              Burst
             </button>
           ),
         };
@@ -43,10 +45,10 @@ export function Dashboard() {
             <button
               type="button"
               onClick={toggleBrainDumpSort}
-              className="px-4 py-1.5 text-xs font-semibold tracking-wide rounded-full bg-[#a855f7]/80 backdrop-blur-md border border-white/20 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:bg-[#a855f7] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)] transition-all duration-300 flex items-center gap-1.5"
+              className="px-3 py-1 text-[11px] font-bold rounded-full bg-accent text-white flex items-center gap-1"
             >
-              <Sparkles size={14} />
-              Auto-Sort
+              <Sparkles size={12} />
+              Sort
             </button>
           ),
         };
@@ -81,26 +83,7 @@ export function Dashboard() {
       case 'zones':
         return <ZonesView />;
       case 'vault':
-        return (
-          <div className="max-w-3xl mx-auto pt-12 px-8">
-            <h1 className="text-2xl font-bold tracking-tight mb-8">The Vault</h1>
-            <button
-              type="button"
-              onClick={toggleCaptureModal}
-              className="w-full text-left group"
-            >
-              <div className="text-sm text-muted/60 tracking-wide">
-                <Typewriter />
-              </div>
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-xs text-muted/40 group-hover:text-muted/60 transition-colors">
-                  Tap to capture a task
-                </span>
-                <span className="text-xs text-muted/30 font-mono">{shortcut}</span>
-              </div>
-            </button>
-          </div>
-        );
+        return <VaultView />;
       default:
         return (
           <div className="max-w-3xl mx-auto pt-12 px-8">
@@ -125,29 +108,35 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] md:min-h-screen bg-[#000000]">
-      <header data-tauri-drag-region="true" className="h-16 border-b border-white/5 flex items-center px-8 justify-between pt-4 select-none cursor-default">
-        <div className="flex items-center gap-3">
-          <button
+    <div className="flex-1 flex flex-col min-h-[100dvh] md:min-h-screen bg-background">
+      <header data-tauri-drag-region="true" className="relative h-16 border-b border-white/5 flex items-center px-8 justify-between pt-4 select-none cursor-default">
+        {/* Mobile centered logo */}
+        <div className="flex md:hidden absolute inset-0 items-center justify-center pointer-events-none">
+          <Zap size={24} className="text-accent" />
+        </div>
+
+        {/* Desktop left */}
+        <div className="hidden md:flex items-center gap-3">
+          <motion.button
             type="button"
             onClick={toggleSidebar}
-            className="hidden md:flex text-white/50 hover:text-white transition-colors"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="text-white/40 hover:text-white transition-colors"
           >
-            <PanelLeft size={16} />
+            <Zap size={20} />
+          </motion.button>
+          <h2 className="text-sm font-medium text-foreground/80">{header.title}</h2>
+          <button type="button" onClick={toggleSettingsModal} className="text-white/40 hover:text-white transition-colors">
+            <MoreVertical size={20} />
           </button>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-medium text-foreground/80">{header.title}</h2>
-            <button
-              type="button"
-              onClick={toggleSettingsModal}
-              className="text-white/40 hover:text-white transition-colors"
-            >
-              <MoreVertical size={18} />
-            </button>
-          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-muted text-xs">Press {shortcut}</span>
+
+        {/* Desktop right */}
+        <div className="hidden md:flex items-center gap-3">
+          <span className="text-muted text-xs mr-4">
+            Press {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? 'Cmd+K' : 'Ctrl+K'}
+          </span>
           {header.action}
         </div>
       </header>

@@ -20,6 +20,7 @@ export function ZonesView() {
   const grouped = useMemo(() => {
     const map = new Map<string | null, typeof tasks>();
     for (const task of tasks) {
+      if (task.status === 'done') continue;
       const key = task.zoneId ?? null;
       const list = map.get(key) ?? [];
       list.push(task);

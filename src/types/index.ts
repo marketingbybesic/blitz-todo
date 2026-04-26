@@ -14,6 +14,13 @@ export const ChecklistItemSchema = z.object({
 });
 export type ChecklistItem = z.infer<typeof ChecklistItemSchema>;
 
+export const ReflectionSchema = z.object({
+  id: z.string().uuid(),
+  date: z.string(),
+  content: z.string(),
+});
+export type Reflection = z.infer<typeof ReflectionSchema>;
+
 export const TaskSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1).max(500),
@@ -27,6 +34,7 @@ export const TaskSchema = z.object({
   impact: z.enum(['high', 'medium', 'low']).default('medium'),
   status: z.enum(['todo', 'in_progress', 'done']).default('todo'),
   checklist: z.array(ChecklistItemSchema).default([]),
+  completedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
 });
 export type Task = z.infer<typeof TaskSchema>;

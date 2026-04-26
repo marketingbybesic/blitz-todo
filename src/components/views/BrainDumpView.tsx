@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { TaskItem } from '../TaskItem';
 import { useTaskStore } from '../../store/useTaskStore';
-import { calculateGravity } from '../../lib/gravity';
+import { calculatePriority } from '../../lib/priority';
 import { Typewriter } from '../Typewriter';
 
 export function BrainDumpView() {
@@ -14,10 +14,10 @@ export function BrainDumpView() {
     loadTasks();
   }, [loadTasks]);
 
-  const chaosTasks = tasks.filter((t) => !t.startDate && !t.dueDate);
+  const chaosTasks = tasks.filter((t) => t.status !== 'done' && !t.startDate && !t.dueDate);
 
   const displayTasks = sorted
-    ? [...chaosTasks].sort((a, b) => calculateGravity(b) - calculateGravity(a))
+    ? [...chaosTasks].sort((a, b) => calculatePriority(b) - calculatePriority(a))
     : chaosTasks;
 
   if (chaosTasks.length === 0) {

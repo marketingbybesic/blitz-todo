@@ -41,7 +41,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
   return (
     <>
       <div
-        className="group flex items-center justify-between p-3 rounded-lg hover:bg-[#09090b] transition-colors relative overflow-hidden"
+        className="group flex items-center justify-between p-3 rounded-lg hover:bg-background transition-colors relative overflow-hidden"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onContextMenu={handleContextMenuOpen}
@@ -92,7 +92,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
           <div className="items-center gap-3 flex md:hidden md:group-hover:flex relative z-10 shrink-0 ml-3">
             <span className="text-xs text-muted"><EnergyIcon size={14} /></span>
             {task.checklist && task.checklist.length > 0 && (
-              <div className="flex items-center gap-1.5 text-[11px] text-white/40 bg-white/5 px-2 py-0.5 rounded-full">
+              <div className="flex items-center gap-1.5 text-[11px] text-white/40 bg-card/5 px-2 py-0.5 rounded-full">
                 <ListChecks size={12} />
                 {task.checklist.filter((i) => i.isDone).length}/{task.checklist.length}
               </div>
@@ -106,7 +106,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
 
       {contextMenu && (
         <div
-          className="fixed z-50 bg-[#1c1c1e] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 min-w-[140px]"
+          className="fixed z-50 bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 min-w-[140px]"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -116,7 +116,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
               deleteTask(task.id);
               setContextMenu(null);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-card/5 transition-colors"
           >
             <Trash2 size={14} />
             Delete
@@ -127,7 +127,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
               setSelectedTaskId(task.id);
               setContextMenu(null);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-card/5 transition-colors"
           >
             <Pencil size={14} />
             Rename

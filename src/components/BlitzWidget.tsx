@@ -79,7 +79,7 @@ export function BlitzWidget() {
             <button
               type="button"
               onClick={() => completeTask(topTask.id)}
-              className="w-full py-2 rounded-md text-xs font-medium text-white/40 hover:text-white hover:bg-white/5 transition-all flex items-center justify-center gap-1.5"
+              className="w-full py-2 rounded-md text-xs font-medium text-white/40 hover:text-white hover:bg-card/5 transition-all flex items-center justify-center gap-1.5"
             >
               <CheckCircle2 size={12} />
               Mark Complete

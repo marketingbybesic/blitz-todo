@@ -36,7 +36,7 @@ export default function App() {
   return (
     <>
       <div className="relative w-screen h-screen overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-0 shadow-[inset_0_0_15px_rgba(168,85,247,0.05)] transition-shadow duration-1000" />
+        <div className="pointer-events-none absolute inset-0 z-0 shadow-[inset_0_0_15px_color-mix(in_srgb,var(--accent)_5%,transparent)] transition-shadow duration-1000" />
         <div className="relative z-10 min-h-[100dvh] md:min-h-screen flex">
           <Sidebar />
           <Dashboard />

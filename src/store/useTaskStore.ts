@@ -3,6 +3,8 @@ import { db } from '../lib/db';
 import type { Task, Zone } from '../types';
 
 type View = 'today' | 'timeline' | 'dump' | 'zones' | 'vault';
+type SortKey = 'priority' | 'dueDate' | 'time';
+type SortDirection = 'asc' | 'desc';
 
 interface TaskState {
   tasks: Task[];
@@ -10,6 +12,8 @@ interface TaskState {
   isSidebarOpen: boolean;
   currentView: View;
   brainDumpSorted: boolean;
+  activeFilters: { deepWork: boolean; highImpact: boolean; shortTask: boolean; longTask: boolean };
+  toggleFilter: (type: 'deepWork' | 'highImpact' | 'shortTask' | 'longTask') => void;
   isCaptureOpen: boolean;
   toggleCaptureModal: () => void;
   selectedTaskId: string | null;
@@ -32,6 +36,8 @@ interface TaskState {
   toggleSidebar: () => void;
   setCurrentView: (view: View) => void;
   toggleBrainDumpSort: () => void;
+  timelineSort: { key: SortKey; direction: SortDirection };
+  setTimelineSort: (key: SortKey, direction: SortDirection) => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -41,6 +47,8 @@ export const useTaskStore = create<TaskState>()(
     isSidebarOpen: true,
     currentView: 'today' as View,
     brainDumpSorted: false,
+    activeFilters: { deepWork: false, highImpact: false, shortTask: false, longTask: false },
+    timelineSort: { key: 'priority' as SortKey, direction: 'desc' as SortDirection },
     isCaptureOpen: false,
     selectedTaskId: null,
     zones: [],
@@ -49,8 +57,7 @@ export const useTaskStore = create<TaskState>()(
 
     loadTasks: async () => {
       const allTasks = await db.tasks.toArray();
-      const activeTasks = allTasks.filter((t) => t.status !== 'done');
-      set({ tasks: activeTasks });
+      set({ tasks: allTasks });
     },
 
     loadZones: async () => {
@@ -94,7 +101,7 @@ export const useTaskStore = create<TaskState>()(
       }, 5000);
       (set as unknown as (fn: (s: typeof state) => Partial<typeof state>) => void)((s) => ({ ...s, _undoTimer: timer }));
 
-      await db.tasks.update(id, { status: 'done' });
+      await db.tasks.update(id, { status: 'done', completedAt: new Date().toISOString() });
       await get().loadTasks();
     },
 
@@ -104,7 +111,7 @@ export const useTaskStore = create<TaskState>()(
 
       if (state._undoTimer) clearTimeout(state._undoTimer);
 
-      await db.tasks.update(state.lastCompletedTask.id, { status: 'todo' });
+      await db.tasks.update(state.lastCompletedTask.id, { status: 'todo', completedAt: undefined });
       await get().loadTasks();
       set({ lastCompletedTask: null, _undoTimer: null });
     },
@@ -163,6 +170,19 @@ export const useTaskStore = create<TaskState>()(
 
     toggleBrainDumpSort: () => {
       set((state) => ({ brainDumpSorted: !state.brainDumpSorted }));
+    },
+
+    setTimelineSort: (key, direction) => {
+      set({ timelineSort: { key, direction } });
+    },
+
+    toggleFilter: (type) => {
+      set((state) => ({
+        activeFilters: {
+          ...state.activeFilters,
+          [type]: !state.activeFilters[type],
+        },
+      }));
     },
 
     toggleCaptureModal: () => {

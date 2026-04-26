@@ -64,7 +64,7 @@ export function SettingsModal() {
               <button
                 type="button"
                 onClick={toggleSettingsModal}
-                className="hidden md:block p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                className="hidden md:block p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-card/5 transition-colors"
               >
                 <X size={16} />
               </button>
@@ -72,7 +72,7 @@ export function SettingsModal() {
 
             <div className="p-6 flex flex-col gap-6">
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-[#1c1c1e] border border-white/5 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-card border border-white/5 flex items-center justify-center">
                   <Palette size={14} className="text-muted" />
                 </div>
                 <div className="flex-1">
@@ -90,7 +90,7 @@ export function SettingsModal() {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-[#1c1c1e] border border-white/5 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-card border border-white/5 flex items-center justify-center">
                   <Layout size={14} className="text-muted" />
                 </div>
                 <div className="flex-1">
@@ -101,8 +101,8 @@ export function SettingsModal() {
                       onClick={() => setFabAlignment('left')}
                       className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border ${
                         fabAlignment === 'left'
-                          ? 'bg-[#a855f7]/20 text-[#a855f7] border-[#a855f7]/30'
-                          : 'bg-[#1c1c1e] text-muted border-white/5 hover:text-white/60'
+                          ? 'bg-accent/20 text-accent border-accent/30'
+                          : 'bg-card text-muted border-white/5 hover:text-white/60'
                       }`}
                     >
                       Left
@@ -112,8 +112,8 @@ export function SettingsModal() {
                       onClick={() => setFabAlignment('right')}
                       className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border ${
                         fabAlignment === 'right'
-                          ? 'bg-[#a855f7]/20 text-[#a855f7] border-[#a855f7]/30'
-                          : 'bg-[#1c1c1e] text-muted border-white/5 hover:text-white/60'
+                          ? 'bg-accent/20 text-accent border-accent/30'
+                          : 'bg-card text-muted border-white/5 hover:text-white/60'
                       }`}
                     >
                       Right
@@ -123,7 +123,7 @@ export function SettingsModal() {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-[#1c1c1e] border border-white/5 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-card border border-white/5 flex items-center justify-center">
                   <KeyRound size={14} className="text-muted" />
                 </div>
                 <div className="flex-1">
@@ -131,7 +131,7 @@ export function SettingsModal() {
                   <input
                     type="password"
                     placeholder="Enter your API key..."
-                    className="w-full bg-[#1c1c1e] border border-white/5 rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-white/20 focus:outline-none focus:border-[#a855f7]/30 transition-colors"
+                    className="w-full bg-card border border-white/5 rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-white/20 focus:outline-none focus:border-accent/30 transition-colors"
                   />
                 </div>
               </div>

@@ -71,7 +71,7 @@ export function QuickCapture() {
           }}
         >
           <motion.div
-            className="w-full max-w-2xl bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-2xl bg-background border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -86,14 +86,14 @@ export function QuickCapture() {
               onChange={(e) => setTitle(e.target.value)}
             />
 
-            <div className="flex items-center justify-between bg-[#1c1c1e] px-6 py-3 border-t border-white/5">
+            <div className="flex items-center justify-between bg-card px-6 py-3 border-t border-white/5">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setEnergyLevel(energyLevel === 'deep-work' ? 'light-work' : 'deep-work')}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
                     energyLevel === 'deep-work'
-                      ? 'bg-[#a855f7]/20 text-[#a855f7] shadow-[0_0_8px_rgba(168,85,247,0.3)]'
+                      ? 'bg-accent/20 text-accent shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_30%,transparent)]'
                       : 'text-muted hover:text-white/60'
                   }`}
                 >
@@ -106,7 +106,7 @@ export function QuickCapture() {
                   onClick={() => setIsTarget((prev) => !prev)}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
                     isTarget
-                      ? 'bg-[#a855f7]/20 text-[#a855f7] shadow-[0_0_8px_rgba(168,85,247,0.3)]'
+                      ? 'bg-accent/20 text-accent shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_30%,transparent)]'
                       : 'text-muted hover:text-white/60'
                   }`}
                 >
@@ -119,7 +119,7 @@ export function QuickCapture() {
                   onClick={() => setImpact((prev) => (prev === 'high' ? 'low' : prev === 'low' ? 'medium' : 'high'))}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1 ${
                     impact === 'high'
-                      ? 'bg-[#a855f7]/20 text-[#a855f7] shadow-[0_0_8px_rgba(168,85,247,0.3)]'
+                      ? 'bg-accent/20 text-accent shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_30%,transparent)]'
                       : 'text-muted hover:text-white/60'
                   }`}
                 >

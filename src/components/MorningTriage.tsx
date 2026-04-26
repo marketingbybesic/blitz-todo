@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { flushSync } from 'react-dom';
 import { useTaskStore } from '../store/useTaskStore';
+
+type Direction = 'left' | 'up' | 'right';
+
+const cardVariants = {
+  enter: { opacity: 0, y: 60, scale: 0.92 },
+  center: { opacity: 1, y: 0, scale: 1 },
+  exit: (direction: Direction) => {
+    switch (direction) {
+      case 'left':
+        return { opacity: 0, x: '-120vw', rotate: -8, scale: 0.85 };
+      case 'up':
+        return { opacity: 0, y: '-120vh', rotate: 4, scale: 0.85 };
+      case 'right':
+        return { opacity: 0, x: '120vw', rotate: 8, scale: 0.85 };
+    }
+  },
+};
 
 export function MorningTriage() {
   const tasks = useTaskStore((state) => state.tasks);
@@ -9,6 +27,7 @@ export function MorningTriage() {
 
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [direction, setDirection] = useState<Direction>('up');
 
   useEffect(() => {
     loadTasks();
@@ -42,8 +61,17 @@ export function MorningTriage() {
 
   const formatDateISO = (date: Date) => date.toISOString();
 
+  const nextTask = () => {
+    if (index + 1 >= triageTasks.length) {
+      setVisible(false);
+    } else {
+      setIndex((prev) => prev + 1);
+    }
+  };
+
   const doToday = async () => {
     if (!currentTask) return;
+    flushSync(() => setDirection('up'));
     await updateTask(currentTask.id, {
       dueDate: formatDateISO(today),
     });
@@ -52,6 +80,7 @@ export function MorningTriage() {
 
   const snooze = async () => {
     if (!currentTask) return;
+    flushSync(() => setDirection('right'));
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     await updateTask(currentTask.id, {
@@ -62,6 +91,7 @@ export function MorningTriage() {
 
   const backlog = async () => {
     if (!currentTask) return;
+    flushSync(() => setDirection('left'));
     await updateTask(currentTask.id, {
       dueDate: undefined,
       startDate: undefined,
@@ -69,13 +99,36 @@ export function MorningTriage() {
     nextTask();
   };
 
-  const nextTask = () => {
-    if (index + 1 >= triageTasks.length) {
-      setVisible(false);
-    } else {
-      setIndex((prev) => prev + 1);
-    }
-  };
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+      if (!visible || !currentTask) return;
+
+      switch (e.key) {
+        case '1':
+          e.preventDefault();
+          doToday();
+          break;
+        case '2':
+          e.preventDefault();
+          snooze();
+          break;
+        case '3':
+          e.preventDefault();
+          backlog();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [visible, currentTask, doToday, snooze, backlog]);
+
+  const remaining = triageTasks.length - index;
+  const progress = (index / triageTasks.length) * 100;
 
   return (
     <AnimatePresence>
@@ -85,51 +138,68 @@ export function MorningTriage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4 }}
         >
-          <motion.div
-            key={currentTask.id}
-            className="flex flex-col items-center gap-8 px-8"
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.97 }}
-            transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.4 }}
-          >
-            <div className="text-center">
-              <div className="text-xs font-semibold text-muted uppercase tracking-widest mb-4">
-                Morning Triage ({index + 1} / {triageTasks.length})
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={currentTask.id}
+              custom={direction}
+              variants={cardVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.55 }}
+              className="flex flex-col items-center gap-10 px-12 py-14 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 max-w-2xl w-full mx-4"
+            >
+              <div className="text-center w-full">
+                <div className="text-xs font-semibold text-muted uppercase tracking-widest mb-6">
+                  Morning Triage
+                </div>
+                <h2 className="text-4xl font-bold text-white tracking-tight text-center leading-tight">
+                  {currentTask.title}
+                </h2>
               </div>
-              <h2 className="text-2xl font-medium text-white tracking-tight max-w-xl">
-                {currentTask.title}
-              </h2>
+
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={doToday}
+                  className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-transparent border-2 border-accent shadow-[0_0_15px_color-mix(in_srgb,var(--accent)_30%,transparent)] hover:bg-accent/20 hover:shadow-[0_0_25px_color-mix(in_srgb,var(--accent)_50%,transparent)] transition-all duration-300"
+                >
+                  Do Today [1]
+                </button>
+
+                <button
+                  type="button"
+                  onClick={snooze}
+                  className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-transparent border-2 border-white/20 hover:border-white/40 hover:bg-white/5 transition-all duration-300"
+                >
+                  Snooze [2]
+                </button>
+
+                <button
+                  type="button"
+                  onClick={backlog}
+                  className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-transparent border-2 border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 transition-all duration-300"
+                >
+                  Backlog [3]
+                </button>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center gap-2 px-4 pointer-events-none">
+            <div className="text-xs font-medium text-muted">
+              {remaining} {remaining === 1 ? 'task' : 'tasks'} remaining
             </div>
-
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={doToday}
-                className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-transparent border-2 border-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:bg-[#a855f7]/20 hover:shadow-[0_0_25px_rgba(168,85,247,0.5)] transition-all duration-300"
-              >
-                Do Today
-              </button>
-
-              <button
-                type="button"
-                onClick={snooze}
-                className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-transparent border-2 border-white/20 hover:border-white/40 hover:bg-white/5 transition-all duration-300"
-              >
-                Snooze
-              </button>
-
-              <button
-                type="button"
-                onClick={backlog}
-                className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-transparent border-2 border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 transition-all duration-300"
-              >
-                Backlog
-              </button>
+            <div className="w-full max-w-md h-1 bg-white/10 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-accent rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--accent)_70%,transparent)]"
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              />
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
