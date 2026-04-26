@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Target, Zap, Brain, BarChart, Minus, Plus, ChevronLeft, Circle, CheckCircle, Trash2 } from 'lucide-react';
+import { X, Target, Zap, Brain, BarChart, Minus, Plus, ChevronLeft, Circle, CheckCircle2, Trash2 } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 
 export function TaskDetailPane() {
@@ -103,18 +103,19 @@ export function TaskDetailPane() {
               <div className="flex-1 p-6 md:p-8 overflow-y-auto flex flex-col gap-6">
                 <input
                   type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={handleSave}
-                  className="w-full bg-transparent text-2xl font-medium text-foreground tracking-tight focus:outline-none placeholder:text-white/20"
-                  placeholder="Task title"
+                  value={task?.title ?? title}
+                  onChange={(e) => {
+                    if (task) updateTask(task.id, { title: e.target.value });
+                  }}
+                  className="text-3xl md:text-4xl font-bold bg-transparent text-foreground placeholder:text-white/20 focus:outline-none w-full"
+                  placeholder="Task Name"
                 />
 
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onBlur={handleSave}
-                  className="w-full min-h-[200px] bg-card/50 rounded-xl p-4 text-sm text-foreground/80 focus:outline-none focus:ring-1 focus:ring-accent/50 resize-none placeholder:text-white/20"
+                  className="w-full flex-1 min-h-[200px] bg-white/[0.02] border border-white/5 rounded-xl p-4 text-sm text-foreground/80 placeholder:text-white/20 focus:outline-none focus:border-accent/30 focus:bg-white/[0.04] transition-all resize-none"
                   placeholder="Add notes, links, markdown..."
                 />
 
@@ -125,30 +126,24 @@ export function TaskDetailPane() {
                   </label>
                   <div className="flex flex-col gap-1">
                     {(task?.checklist || []).map((item) => (
-                      <div
-                        key={item.id}
-                        className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors"
-                      >
+                      <div key={item.id} className="group flex items-center gap-3 hover:bg-white/5 p-2 rounded-lg transition-colors">
                         <button
                           type="button"
                           onClick={() => {
                             if (task) toggleChecklistItem(task.id, item.id);
                           }}
-                          className="text-muted hover:text-foreground transition-colors shrink-0"
                         >
-                          {item.isDone ? <CheckCircle size={14} /> : <Circle size={14} />}
+                          {item.isDone ? <CheckCircle2 className="text-accent" size={16} /> : <Circle className="text-white/20 group-hover:text-white/40" size={16} />}
                         </button>
-                        <span className={`text-xs flex-1 ${item.isDone ? 'line-through text-muted' : 'text-foreground/80'}`}>
-                          {item.title}
-                        </span>
+                        <span className={`flex-1 text-sm ${item.isDone ? 'text-white/20 line-through' : 'text-foreground/80'}`}>{item.title}</span>
                         <button
                           type="button"
                           onClick={() => {
                             if (task) deleteChecklistItem(task.id, item.id);
                           }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-400 shrink-0 p-0.5"
+                          className="opacity-0 group-hover:opacity-100 text-red-400/50 hover:text-red-400 transition-all"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     ))}
@@ -163,7 +158,7 @@ export function TaskDetailPane() {
                         }
                       }}
                       placeholder="Add subtask (Press Enter)"
-                      className="w-full bg-transparent text-xs text-foreground/80 focus:outline-none placeholder:text-white/20 py-1.5 px-2"
+                      className="w-full bg-transparent border-b border-white/10 focus:border-accent pb-2 text-sm text-foreground placeholder:text-white/30 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
