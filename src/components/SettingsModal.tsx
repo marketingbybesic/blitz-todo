@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Palette, Layout, KeyRound, ChevronLeft } from 'lucide-react';
+import { X, Palette, Layout, KeyRound, ChevronLeft, Moon } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function SettingsModal() {
@@ -11,6 +11,8 @@ export function SettingsModal() {
   const applyAccentColor = useSettingsStore((state) => state.applyAccentColor);
   const fabAlignment = useSettingsStore((state) => state.fabAlignment);
   const setFabAlignment = useSettingsStore((state) => state.setFabAlignment);
+  const theme = useSettingsStore((state) => state.theme);
+  const setTheme = useSettingsStore((state) => state.setTheme);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,7 +46,7 @@ export function SettingsModal() {
           }}
         >
           <motion.div
-            className="w-full max-w-lg bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-lg bg-background border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -118,6 +120,31 @@ export function SettingsModal() {
                     >
                       Right
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center">
+                  <Moon size={14} className="text-muted" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-foreground/80 block mb-2">Theme</label>
+                  <div className="flex items-center gap-2">
+                    {(['dark', 'midnight', 'light'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTheme(t)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border capitalize ${
+                          theme === t
+                            ? 'bg-accent/20 text-accent border-accent/30'
+                            : 'bg-card text-muted border-border hover:text-foreground/60'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

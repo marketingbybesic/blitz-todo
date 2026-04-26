@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react';
 import { db } from '../lib/db';
 import { calculatePriority } from '../lib/priority';
 import type { Task } from '../types';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 export function StatsRow() {
+  const streak = useSettingsStore((s) => s.streak);
+  const focusPoints = useSettingsStore((s) => s.focusPoints);
+
   const [stats, setStats] = useState({
     totalCompletedToday: 0,
     deepWorkCompletedToday: 0,
@@ -43,7 +47,7 @@ export function StatsRow() {
   }, []);
 
   return (
-    <div className="grid grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-5 gap-4 mb-6">
       <div className="bg-card/[0.02] border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center">
         <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
           Completed Today
@@ -66,6 +70,22 @@ export function StatsRow() {
         </div>
         <div className="text-2xl font-bold text-accent">
           {stats.priorityScore}
+        </div>
+      </div>
+      <div className="bg-card/[0.02] border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+        <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
+          Streak
+        </div>
+        <div className="text-2xl font-bold text-orange-400">
+          {streak}d
+        </div>
+      </div>
+      <div className="bg-card/[0.02] border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+        <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
+          Focus XP
+        </div>
+        <div className="text-2xl font-bold text-green-400">
+          {focusPoints}
         </div>
       </div>
     </div>

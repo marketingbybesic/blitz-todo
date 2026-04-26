@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import type { Task, Zone } from '../types';
+import { useSettingsStore } from './useSettingsStore';
 
 type View = 'today' | 'timeline' | 'dump' | 'zones' | 'vault' | 'kanban';
 type SortKey = 'priority' | 'dueDate' | 'time';
@@ -125,6 +126,7 @@ export const useTaskStore = create<TaskState>()(
 
       await db.tasks.update(id, { status: 'done', completedAt: new Date().toISOString() });
       await get().loadTasks();
+      useSettingsStore.getState().incrementFocusPoints(5);
     },
 
     undoComplete: async () => {

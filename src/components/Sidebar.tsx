@@ -1,4 +1,4 @@
-import { List, Calendar, Inbox, Layers, Archive } from 'lucide-react';
+import { List, Calendar, Inbox, Layers, Archive, LayoutGrid } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BlitzLogo } from './BlitzLogo';
 import { useTaskStore } from '../store/useTaskStore';
@@ -6,6 +6,7 @@ import { useTaskStore } from '../store/useTaskStore';
 const navItems = [
   { icon: Calendar, label: 'Today', viewId: 'today' as const },
   { icon: List, label: 'Timeline', viewId: 'timeline' as const },
+  { icon: LayoutGrid, label: 'Kanban', viewId: 'kanban' as const },
   { icon: Inbox, label: 'Brain Dump', viewId: 'dump' as const },
   { icon: Layers, label: 'Zones', viewId: 'zones' as const },
   { icon: Archive, label: 'The Vault', viewId: 'vault' as const },

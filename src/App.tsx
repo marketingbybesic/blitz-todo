@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { useTaskStore } from './store/useTaskStore';
+import { useSettingsStore } from './store/useSettingsStore';
 import { BlitzWidget } from './components/BlitzWidget';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -22,6 +23,12 @@ export default function App() {
   const morningTriageDismissed = useTaskStore((state) => state.morningTriageDismissed);
   const openMorningTriage = useTaskStore((state) => state.openMorningTriage);
   const markMorningTriageChecked = useTaskStore((state) => state.markMorningTriageChecked);
+  const toggleCaptureModal = useTaskStore((state) => state.toggleCaptureModal);
+  const checkAndUpdateStreak = useSettingsStore((state) => state.checkAndUpdateStreak);
+
+  useEffect(() => {
+    checkAndUpdateStreak();
+  }, [checkAndUpdateStreak]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -29,10 +36,14 @@ export default function App() {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
       }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === ' ') {
+        e.preventDefault();
+        toggleCaptureModal();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [toggleCaptureModal]);
 
   useEffect(() => {
     if (currentView === 'today' && !morningTriageDismissed) {

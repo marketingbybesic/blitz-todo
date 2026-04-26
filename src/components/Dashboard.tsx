@@ -6,6 +6,7 @@ import { TimelineView } from './views/TimelineView';
 import { BrainDumpView } from './views/BrainDumpView';
 import { ZonesView } from './views/ZonesView';
 import { VaultView } from './views/VaultView';
+import { KanbanView } from './views/KanbanView';
 import { Typewriter, shortcut } from './Typewriter';
 import { useTaskStore } from '../store/useTaskStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -64,6 +65,11 @@ export function Dashboard() {
           title: 'The Vault',
           action: null,
         };
+      case 'kanban':
+        return {
+          title: 'Kanban',
+          action: null,
+        };
       default:
         return {
           title: 'Today',
@@ -86,6 +92,8 @@ export function Dashboard() {
         return <ZonesView />;
       case 'vault':
         return <VaultView />;
+      case 'kanban':
+        return <KanbanView />;
       default:
         return (
           <div className="max-w-3xl mx-auto pt-12 px-8">

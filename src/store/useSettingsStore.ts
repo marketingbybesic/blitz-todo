@@ -60,7 +60,7 @@ export const useSettingsStore = create<SettingsState>()(
         if (state.lastActiveDate === today) return;
         const yesterday = new Date(Date.now() - 86400000).toDateString();
         const newStreak = state.lastActiveDate === yesterday ? state.streak + 1 : 1;
-        set({ streak: newStreak, lastActiveDate: today });
+        set({ streak: newStreak, lastActiveDate: today, focusPoints: state.focusPoints + 10 });
       },
     }),
     {
