@@ -253,7 +253,7 @@ export function TaskDetailPane() {
                   <input
                     type="datetime-local"
                     value={task.dueDate ? task.dueDate.slice(0, 16) : ''}
-                    onChange={(e) => updateTask(task.id, { dueDate: e.target.value || undefined })}
+                    onChange={(e) => updateTask(task.id, { dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
                     className="w-full bg-card border border-white/5 rounded-lg px-3 py-2 text-xs text-foreground/80 focus:outline-none focus:ring-1 focus:ring-accent/50"
                   />
                 </div>

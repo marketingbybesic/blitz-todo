@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { GripHorizontal, ArrowLeft, Brain, Target, CheckCircle2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { GripHorizontal, ArrowLeft, Brain, Target, CheckCircle2, Play, Pause, RotateCcw } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 
 export function BlitzWidget() {
@@ -7,6 +7,33 @@ export function BlitzWidget() {
   const loadTasks = useTaskStore((state) => state.loadTasks);
   const completeTask = useTaskStore((state) => state.completeTask);
   const toggleBlitzMode = useTaskStore((state) => state.toggleBlitzMode);
+
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(25 * 60);
+  const [timerMode, setTimerMode] = useState<'focus' | 'break'>('focus');
+
+  useEffect(() => {
+    if (!timerActive) return;
+    const interval = setInterval(() => {
+      setTimerSeconds((prev) => {
+        if (prev <= 1) {
+          setTimerActive(false);
+          setTimerMode((m) => (m === 'focus' ? 'break' : 'focus'));
+          return timerMode === 'focus' ? 5 * 60 : 25 * 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerActive, timerMode]);
+
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+  const totalSeconds = timerMode === 'focus' ? 25 * 60 : 5 * 60;
+  const circumference = 2 * Math.PI * 36;
+  const progress = timerSeconds / totalSeconds;
+  const strokeDashoffset = circumference * (1 - progress);
 
   useEffect(() => {
     loadTasks();
@@ -69,12 +96,67 @@ export function BlitzWidget() {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="w-full py-2 rounded-md text-xs font-medium border border-accent/30 text-accent hover:bg-accent hover:text-white transition-all"
-            >
-              Start Focus
-            </button>
+            {/* Pomodoro Timer */}
+            <div className="flex flex-col items-center gap-3">
+              {/* Circular progress ring */}
+              <div className="relative flex items-center justify-center w-24 h-24">
+                <svg width="96" height="96" className="-rotate-90">
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="36"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-border"
+                  />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="36"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className="text-accent transition-all duration-1000"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-xl font-bold tabular-nums text-foreground leading-none">
+                    {formatTime(timerSeconds)}
+                  </span>
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-muted mt-0.5">
+                    {timerMode}
+                  </span>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimerActive(false);
+                    setTimerMode('focus');
+                    setTimerSeconds(25 * 60);
+                  }}
+                  className="p-2 rounded-md text-muted hover:text-foreground hover:bg-card/5 transition-all"
+                  aria-label="Reset timer"
+                >
+                  <RotateCcw size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimerActive((a) => !a)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium border border-accent/30 text-accent hover:bg-accent hover:text-background transition-all"
+                >
+                  {timerActive ? <Pause size={13} /> : <Play size={13} />}
+                  {timerActive ? 'Pause' : 'Start Focus'}
+                </button>
+              </div>
+            </div>
 
             <button
               type="button"

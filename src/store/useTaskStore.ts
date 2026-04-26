@@ -1,9 +1,10 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import type { Task, Zone } from '../types';
 
-type View = 'today' | 'timeline' | 'dump' | 'zones' | 'vault';
+type View = 'today' | 'timeline' | 'dump' | 'zones' | 'vault' | 'kanban';
 type SortKey = 'priority' | 'dueDate' | 'time';
 type SortDirection = 'asc' | 'desc';
 
@@ -48,6 +49,7 @@ interface TaskState {
   setQuickCaptureSelectedZoneId: (id: string | null) => void;
   submitQuickCapture: () => Promise<void>;
   morningTriageDismissed: boolean;
+  morningTriageDismissedDate?: string;
   isMorningTriageOpen: boolean;
   openMorningTriage: () => void;
   dismissMorningTriage: () => void;
@@ -55,7 +57,8 @@ interface TaskState {
 }
 
 export const useTaskStore = create<TaskState>()(
-  (set, get) => ({
+  persist(
+    (set, get) => ({
     tasks: [],
     burstModeActive: false,
     isSidebarOpen: true,
@@ -67,6 +70,7 @@ export const useTaskStore = create<TaskState>()(
     quickCaptureQuery: '',
     quickCaptureSelectedZoneId: null,
     morningTriageDismissed: false,
+    morningTriageDismissedDate: undefined,
     isMorningTriageOpen: false,
     isCaptureOpen: false,
     selectedTaskId: null,
@@ -279,5 +283,20 @@ export const useTaskStore = create<TaskState>()(
     setSelectedTaskId: (id) => {
       set({ selectedTaskId: id });
     },
-  })
-);
+  }),
+  {
+    name: 'blitz-tasks',
+    partialize: (state) => ({
+      morningTriageDismissed: state.morningTriageDismissed,
+      morningTriageDismissedDate: new Date().toDateString(),
+    }),
+    onRehydrateStorage: () => (state) => {
+      if (state) {
+        const today = new Date().toDateString();
+        if ((state as TaskState & { morningTriageDismissedDate?: string }).morningTriageDismissedDate !== today) {
+          state.morningTriageDismissed = false;
+        }
+      }
+    },
+  }
+));

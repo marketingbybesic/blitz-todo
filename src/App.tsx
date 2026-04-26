@@ -11,9 +11,11 @@ import { TaskDetailPane } from './components/TaskDetailPane';
 import { Toast } from './components/Toast';
 import { SettingsModal } from './components/SettingsModal';
 import { CommandPalette } from './components/CommandPalette';
+import { Onboarding } from './components/Onboarding';
 
 export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('blitz-onboarded'));
   const burstModeActive = useTaskStore((state) => state.burstModeActive);
   const currentView = useTaskStore((state) => state.currentView);
   const tasks = useTaskStore((state) => state.tasks);
@@ -71,6 +73,7 @@ export default function App() {
 
   return (
     <>
+      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
       <div className="relative w-screen h-screen overflow-hidden">
         <div className="pointer-events-none absolute inset-0 z-0 shadow-[inset_0_0_15px_color-mix(in_srgb,var(--accent)_5%,transparent)] transition-shadow duration-1000" />
         <div className="relative z-10 h-screen flex">
