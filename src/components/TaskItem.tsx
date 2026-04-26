@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Circle, CheckCircle, Brain, Zap, Trash2, Pencil, ListChecks, Eye, EyeOff, MapPin, Clock, TrendingUp } from 'lucide-react';
+import { Circle, CheckCircle, Brain, Zap, Trash2, Calendar, MapPin, ListChecks, Eye, EyeOff, Clock, TrendingUp } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 import type { Task } from '../types';
 
@@ -32,12 +32,25 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
-  useEffect(() => {
-    if (!contextMenu) return;
-    const handleClick = () => setContextMenu(null);
-    window.addEventListener('click', handleClick, { capture: true, once: true });
-    return () => window.removeEventListener('click', handleClick, { capture: true });
-  }, [contextMenu]);
+  const updateTask = useTaskStore((state) => state.updateTask);
+
+  const handleReschedule = async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    await updateTask(task.id, { dueDate: tomorrow.toISOString() });
+    setContextMenu(null);
+  };
+
+  const handleOpenDetail = () => {
+    setSelectedTaskId(task.id);
+    setContextMenu(null);
+  };
+
+  const handleDelete = async () => {
+    await deleteTask(task.id);
+    setContextMenu(null);
+  };
 
   const EnergyIcon = task.energyLevel === 'deep-work' ? Brain : Zap;
 
@@ -149,36 +162,57 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
         </AnimatePresence>
       </div>
 
-      {contextMenu && (
-        <div
-          className="fixed z-50 bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 min-w-[140px]"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              deleteTask(task.id);
-              setContextMenu(null);
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-card/5 transition-colors"
-          >
-            <Trash2 size={14} />
-            Delete
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedTaskId(task.id);
-              setContextMenu(null);
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-card/5 transition-colors"
-          >
-            <Pencil size={14} />
-            Rename
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {contextMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1 }}
+              className="fixed inset-0 z-[99]"
+              onClick={() => setContextMenu(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed z-[100] bg-card/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[160px]"
+              style={{
+                top: contextMenu.y + 180 > window.innerHeight ? contextMenu.y - 180 : contextMenu.y,
+                left: contextMenu.x + 160 > window.innerWidth ? contextMenu.x - 160 : contextMenu.x,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={handleReschedule}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-[11px] text-white/80 hover:bg-white/5 transition-colors duration-75"
+              >
+                <Calendar size={14} />
+                Reschedule (Tomorrow)
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenDetail}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-[11px] text-white/80 hover:bg-white/5 transition-colors duration-75"
+              >
+                <MapPin size={14} />
+                Change Zone
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-[11px] text-red-400 hover:bg-white/5 transition-colors duration-75"
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
