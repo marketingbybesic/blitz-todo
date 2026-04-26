@@ -1,21 +1,25 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { FilterX } from 'lucide-react';
+import { FilterX, Zap, Sunrise } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { TaskItem } from '../TaskItem';
 import { FilterBar } from '../FilterBar';
+import { StatsRow } from '../StatsRow';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { shortcut } from '../Typewriter';
 
 export function TodayView() {
-  const tasks = useTaskStore((state) => state.tasks);
-  const loadTasks = useTaskStore((state) => state.loadTasks);
-  const completeTask = useTaskStore((state) => state.completeTask);
-  const activeFilters = useTaskStore((state) => state.activeFilters);
-  const clearFilters = useTaskStore((state) => state.clearFilters);
-  const toggleCaptureModal = useTaskStore((state) => state.toggleCaptureModal);
-  const addTask = useTaskStore((state) => state.addTask);
-  const isCaptureOpen = useTaskStore((state) => state.isCaptureOpen);
-  const showStatsAndCompleted = useSettingsStore((state) => state.showStatsAndCompleted);
+  const tasks            = useTaskStore(s => s.tasks);
+  const loadTasks        = useTaskStore(s => s.loadTasks);
+  const completeTask     = useTaskStore(s => s.completeTask);
+  const activeFilters    = useTaskStore(s => s.activeFilters);
+  const clearFilters     = useTaskStore(s => s.clearFilters);
+  const toggleCaptureModal = useTaskStore(s => s.toggleCaptureModal);
+  const addTask          = useTaskStore(s => s.addTask);
+  const isCaptureOpen    = useTaskStore(s => s.isCaptureOpen);
+  const toggleBlitzMode  = useTaskStore(s => s.toggleBlitzMode);
+  const openMorningTriage = useTaskStore(s => s.openMorningTriage);
+  const showStatsAndCompleted = useSettingsStore(s => s.showStatsAndCompleted);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -23,129 +27,76 @@ export function TodayView() {
 
   const handleAddTask = useCallback(async () => {
     if (!newTaskTitle.trim()) return;
-    await addTask({
-      title: newTaskTitle.trim(),
-      energyLevel: 'light-work',
-      estimatedMinutes: 15,
-      isTarget: false,
-      status: 'todo',
-      impact: 'medium',
-      dueDate: undefined,
-      content: undefined,
-      zoneId: undefined,
-      startDate: undefined,
-      checklist: [],
-    });
-    setNewTaskTitle('');
-    setIsAdding(false);
+    await addTask({ title: newTaskTitle.trim(), energyLevel: 'light-work', estimatedMinutes: 15, isTarget: false, status: 'todo', impact: 'medium', dueDate: undefined, content: undefined, zoneId: undefined, startDate: undefined, checklist: [] });
+    setNewTaskTitle(''); setIsAdding(false);
   }, [newTaskTitle, addTask]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const h = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         if (isAdding || isCaptureOpen) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        setIsAdding(true);
-      } else if (e.key === 'Escape' && isAdding) {
-        setIsAdding(false);
-        setNewTaskTitle('');
-      } else if (e.key === 'Enter' && isAdding && !e.shiftKey) {
-        e.preventDefault();
-        handleAddTask();
-      }
+        e.preventDefault(); e.stopImmediatePropagation(); setIsAdding(true);
+      } else if (e.key === 'Escape' && isAdding) { setIsAdding(false); setNewTaskTitle(''); }
+      else if (e.key === 'Enter' && isAdding && !e.shiftKey) { e.preventDefault(); handleAddTask(); }
     };
-
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
   }, [isAdding, isCaptureOpen, handleAddTask]);
 
-  useEffect(() => {
-    if (isAdding && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isAdding]);
+  useEffect(() => { if (isAdding && inputRef.current) inputRef.current.focus(); }, [isAdding]);
+  useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+  const filtered = useMemo(() => tasks.filter(t => {
+    if (!showStatsAndCompleted && t.status === 'done') return false;
+    if (activeFilters.deepWork  && t.energyLevel !== 'deep-work') return false;
+    if (activeFilters.highImpact && t.impact !== 'high') return false;
+    if (activeFilters.shortTask && t.estimatedMinutes > 15) return false;
+    if (activeFilters.longTask  && t.estimatedMinutes < 60) return false;
+    return true;
+  }), [tasks, activeFilters, showStatsAndCompleted]);
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((t) => {
-      if (!showStatsAndCompleted && t.status === 'done') return false;
-      if (activeFilters.deepWork && t.energyLevel !== 'deep-work') return false;
-      if (activeFilters.highImpact && t.impact !== 'high') return false;
-      if (activeFilters.shortTask && t.estimatedMinutes > 15) return false;
-      if (activeFilters.longTask && t.estimatedMinutes < 60) return false;
-      return true;
-    });
-  }, [tasks, activeFilters, showStatsAndCompleted]);
-
-  const deepTasks = filteredTasks.filter((t) => t.energyLevel === 'deep-work');
-  const lightTasks = filteredTasks.filter((t) => t.energyLevel === 'light-work');
-
-  const totalTasks = filteredTasks.length;
-  const completedTasks = filteredTasks.filter((t) => t.status === 'done').length;
-  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-  const hasActiveFilters = activeFilters.deepWork || activeFilters.highImpact || activeFilters.shortTask || activeFilters.longTask;
-
-  const header = (
-    <div className="flex items-center justify-between mb-8">
-      <h1 className="text-2xl font-bold tracking-tight">Today</h1>
-      {hasActiveFilters && (
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors"
-        >
-          <FilterX size={14} />
-          Clear Filters
-        </button>
-      )}
-    </div>
-  );
+  const deepTasks  = filtered.filter(t => t.energyLevel === 'deep-work');
+  const lightTasks = filtered.filter(t => t.energyLevel === 'light-work');
+  const total = filtered.length;
+  const done  = filtered.filter(t => t.status === 'done').length;
+  const pct   = total > 0 ? (done / total) * 100 : 0;
+  const hasFilters = activeFilters.deepWork || activeFilters.highImpact || activeFilters.shortTask || activeFilters.longTask;
 
   const inlineInput = isAdding && (
-    <div className="mb-6">
+    <div className="mb-6 mt-2">
       <input
         ref={inputRef}
         type="text"
         value={newTaskTitle}
-        onChange={(e) => setNewTaskTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            handleAddTask();
-          }
-          if (e.key === 'Escape') {
-            setIsAdding(false);
-            setNewTaskTitle('');
-          }
-        }}
+        onChange={e => setNewTaskTitle(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTask(); } if (e.key === 'Escape') { setIsAdding(false); setNewTaskTitle(''); } }}
         placeholder="What needs to get done?"
-        className="w-full bg-transparent border-b border-white/10 text-foreground focus:outline-none focus:border-accent text-sm py-2 placeholder:text-white/20"
+        className="w-full bg-transparent border-b border-accent/30 text-foreground focus:outline-none focus:border-accent text-sm py-2 placeholder:text-muted/30 transition-colors"
       />
     </div>
   );
 
   if (tasks.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto pt-12 px-8">
-        {header}
+      <div className="max-w-3xl mx-auto pt-10 px-6 pb-24">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-xl font-bold tracking-tight">Today</h1>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={openMorningTriage}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-card text-muted border border-border hover:text-foreground hover:border-border/60 transition-all">
+              <Sunrise size={13} /> Triage
+            </button>
+            <button type="button" onClick={toggleBlitzMode}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-accent/15 text-accent border border-accent/25 hover:bg-accent/25 transition-all shadow-[0_0_12px_color-mix(in_srgb,var(--accent)_20%,transparent)]">
+              <Zap size={13} /> Burst
+            </button>
+          </div>
+        </div>
         {inlineInput || (
-          <button
-            type="button"
-            onClick={toggleCaptureModal}
-            className="w-full text-left group"
-          >
-            <div className="text-sm text-muted/60 tracking-wide">
-              Your slate is clean.
-            </div>
+          <button type="button" onClick={toggleCaptureModal} className="w-full text-left group">
+            <div className="text-sm text-muted/60 tracking-wide">Your slate is clean.</div>
             <div className="flex justify-between items-center mt-1">
-              <span className="text-xs text-muted/40 group-hover:text-muted/60 transition-colors">
-                Tap to capture a task
-              </span>
+              <span className="text-xs text-muted/40 group-hover:text-muted/60 transition-colors">Tap to capture a task</span>
               <span className="text-xs text-muted/30 font-mono">{shortcut}</span>
             </div>
           </button>
@@ -155,44 +106,74 @@ export function TodayView() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto pt-12 px-8">
-      {header}
+    <div className="max-w-3xl mx-auto pt-10 px-6 pb-24">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Today</h1>
+          {total > 0 && <p className="text-xs text-muted mt-0.5">{done}/{total} done</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          {hasFilters && (
+            <button type="button" onClick={clearFilters}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-card text-muted border border-border hover:text-foreground transition-all">
+              <FilterX size={12} /> Clear
+            </button>
+          )}
+          <button type="button" onClick={openMorningTriage}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-card text-muted border border-border hover:text-foreground hover:border-border/60 transition-all">
+            <Sunrise size={13} /> Triage
+          </button>
+          <button type="button" onClick={toggleBlitzMode}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-accent/15 text-accent border border-accent/25 hover:bg-accent/25 transition-all shadow-[0_0_12px_color-mix(in_srgb,var(--accent)_20%,transparent)]">
+            <Zap size={13} /> Burst
+          </button>
+        </div>
+      </div>
+
+      {/* Progress */}
+      {total > 0 && (
+        <div className="w-full h-0.5 bg-white/[0.05] rounded-full mb-6 overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          />
+        </div>
+      )}
+
       {inlineInput}
       <FilterBar />
+      {showStatsAndCompleted && <StatsRow />}
 
-      <div className="relative pl-6 min-h-[50vh]">
-        {/* Progress track */}
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-card/5 rounded-full overflow-hidden">
-          <div
-            className="absolute bottom-0 left-0 w-full bg-accent transition-all duration-700 ease-out rounded-full shadow-[0_0_10px_var(--accent)]"
-            style={{ height: `${progressPercentage}%` }}
+      <div className="relative pl-5 min-h-[40vh]">
+        {/* Vertical progress line */}
+        <div className="absolute left-0 top-0 bottom-0 w-px bg-white/[0.04] rounded-full overflow-hidden">
+          <motion.div className="absolute bottom-0 left-0 w-full rounded-full"
+            style={{ background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}
+            animate={{ height: `${pct}%` }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
           />
         </div>
 
         {deepTasks.length > 0 && (
-          <>
-            <div className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4 mt-8">
-              Deep Work
-            </div>
+          <div className="mb-8">
+            <div className="text-[10px] font-bold text-muted/50 uppercase tracking-[0.2em] mb-3">Deep Work</div>
             <div className="flex flex-col gap-1">
-              {deepTasks.map((task) => (
-                <TaskItem key={task.id} task={task} onComplete={completeTask} />
-              ))}
+              {deepTasks.map(t => <TaskItem key={t.id} task={t} onComplete={completeTask} />)}
             </div>
-          </>
+          </div>
         )}
 
         {lightTasks.length > 0 && (
-          <>
-            <div className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4 mt-8">
-              Light Work
-            </div>
+          <div>
+            <div className="text-[10px] font-bold text-muted/50 uppercase tracking-[0.2em] mb-3">Light Work</div>
             <div className="flex flex-col gap-1">
-              {lightTasks.map((task) => (
-                <TaskItem key={task.id} task={task} onComplete={completeTask} />
-              ))}
+              {lightTasks.map(t => <TaskItem key={t.id} task={t} onComplete={completeTask} />)}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

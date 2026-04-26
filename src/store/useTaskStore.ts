@@ -6,7 +6,7 @@ import type { Task, Zone } from '../types';
 import { useSettingsStore } from './useSettingsStore';
 
 type View = 'today' | 'timeline' | 'dump' | 'zones' | 'vault' | 'kanban';
-type SortKey = 'priority' | 'dueDate' | 'time';
+type SortKey = 'priority' | 'dueDate' | 'time' | 'impact';
 type SortDirection = 'asc' | 'desc';
 
 interface TaskState {
