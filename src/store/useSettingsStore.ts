@@ -10,6 +10,17 @@ interface SettingsState {
   streak: number;
   focusPoints: number;
   lastActiveDate: string;
+  calendarEvents: string; // JSON stringified CalEvent[]
+  calendarName: string;
+  syncFolder: string;
+  notificationsEnabled: boolean;
+  showCompletedInTimeline: boolean;
+  pomodoroMinutes: number;
+  setCalendarEvents: (json: string, name: string) => void;
+  setSyncFolder: (path: string) => void;
+  toggleNotifications: () => void;
+  toggleShowCompleted: () => void;
+  setPomodoroMinutes: (m: number) => void;
   setAccentColor: (color: string) => void;
   setFabAlignment: (alignment: 'left' | 'right') => void;
   toggleSettingsModal: () => void;
@@ -31,6 +42,12 @@ export const useSettingsStore = create<SettingsState>()(
       streak: 0,
       focusPoints: 0,
       lastActiveDate: '',
+      calendarEvents: '',
+      calendarName: '',
+      syncFolder: '',
+      notificationsEnabled: false,
+      showCompletedInTimeline: false,
+      pomodoroMinutes: 25,
 
       setAccentColor: (color) => set({ accentColor: color }),
 
@@ -41,6 +58,12 @@ export const useSettingsStore = create<SettingsState>()(
 
       toggleStats: () =>
         set((state) => ({ showStatsAndCompleted: !state.showStatsAndCompleted })),
+
+      setCalendarEvents: (json, name) => set({ calendarEvents: json, calendarName: name }),
+      setSyncFolder: (path) => set({ syncFolder: path }),
+      toggleNotifications: () => set(s => ({ notificationsEnabled: !s.notificationsEnabled })),
+      toggleShowCompleted: () => set(s => ({ showCompletedInTimeline: !s.showCompletedInTimeline })),
+      setPomodoroMinutes: (m) => set({ pomodoroMinutes: m }),
 
       applyAccentColor: (color) => {
         document.documentElement.style.setProperty('--accent', color);
@@ -73,6 +96,12 @@ export const useSettingsStore = create<SettingsState>()(
         streak: state.streak,
         focusPoints: state.focusPoints,
         lastActiveDate: state.lastActiveDate,
+        calendarEvents: state.calendarEvents,
+        calendarName: state.calendarName,
+        syncFolder: state.syncFolder,
+        notificationsEnabled: state.notificationsEnabled,
+        showCompletedInTimeline: state.showCompletedInTimeline,
+        pomodoroMinutes: state.pomodoroMinutes,
       }),
       onRehydrateStorage: () => (state) => {
         if (state?.accentColor) {

@@ -5,10 +5,12 @@ import { TaskItem } from '../TaskItem';
 import { FilterBar } from '../FilterBar';
 import { TimelineControls } from '../TimelineControls';
 import { useTaskStore } from '../../store/useTaskStore';
-import { useSettingsStore } from '../../store/useSettingsStore';
 import { calculatePriority } from '../../lib/priority';
 import { Typewriter } from '../Typewriter';
 import type { Task } from '../../types';
+import { getCalendarEvents } from '../../lib/calendarStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import type { CalEvent } from '../../lib/ical';
 
 type DateBucket = 'overdue' | 'today' | 'tomorrow' | 'later' | 'unscheduled';
 
@@ -110,7 +112,21 @@ export function TimelineView() {
     unscheduled: sorted.filter(t => getDateCategory(t) === 'unscheduled'),
   }), [sorted]);
 
-  const empty = sorted.length === 0;
+  const calendarEventsJson = useSettingsStore(s => s.calendarEvents);
+  const todayCalEvents = useMemo(() => {
+    if (!calendarEventsJson) return [];
+    try {
+      const stored = JSON.parse(calendarEventsJson) as Array<{ uid: string; title: string; start: string; end: string; allDay: boolean }>;
+      const now = new Date();
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dayEnd   = new Date(dayStart); dayEnd.setDate(dayStart.getDate() + 1);
+      return stored
+        .map(e => ({ ...e, start: new Date(e.start), end: new Date(e.end) }))
+        .filter(e => e.start >= dayStart && e.start < dayEnd);
+    } catch { return []; }
+  }, [calendarEventsJson]);
+
+  const empty = sorted.length === 0 && todayCalEvents.length === 0;
 
   return (
     <div className="max-w-3xl mx-auto pt-10 px-6 pb-24">
@@ -126,6 +142,28 @@ export function TimelineView() {
       </div>
 
       <FilterBar />
+
+      {/* Calendar events for today */}
+      {todayCalEvents.length > 0 && (
+        <div className="mb-5 p-3 bg-blue-400/5 border border-blue-400/15 rounded-xl">
+          <div className="text-[10px] font-semibold text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <span>📅</span> Today's Calendar Events
+          </div>
+          <div className="flex flex-col gap-2">
+            {todayCalEvents.map(ev => (
+              <div key={ev.uid} className="flex items-center gap-2 text-xs">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0"/>
+                <span className="text-foreground/80 font-medium">{ev.title}</span>
+                {!ev.allDay && (
+                  <span className="text-muted/50 ml-auto tabular-nums font-mono">
+                    {ev.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {empty ? (
         <div className="text-sm text-muted/60 tracking-wide mt-8">

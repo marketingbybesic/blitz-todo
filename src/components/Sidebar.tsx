@@ -1,7 +1,7 @@
-import { List, Calendar, Inbox, Layers, Archive, LayoutGrid, Settings, PanelLeftClose } from 'lucide-react';
+import { List, Calendar, Inbox, Layers, Archive, LayoutGrid, Settings, PanelLeftClose, Flame } from 'lucide-react';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '../store/useTaskStore';
-import { useSettingsStore } from '../store/useSettingsStore';
 
 const navItems = [
   { icon: Calendar,     label: 'Today',      viewId: 'today' as const },
@@ -18,6 +18,8 @@ export function Sidebar() {
   const currentView       = useTaskStore(s => s.currentView);
   const setCurrentView    = useTaskStore(s => s.setCurrentView);
   const toggleSettingsModal = useSettingsStore(s => s.toggleSettingsModal);
+  const streak = useSettingsStore(s => s.streak);
+  const focusPoints = useSettingsStore(s => s.focusPoints);
 
   return (
     <AnimatePresence initial={false}>
@@ -82,6 +84,19 @@ export function Sidebar() {
           {/* Settings */}
           <div className="px-3 pb-6">
             <div className="h-px bg-border mb-3" />
+            {isSidebarOpen && (
+              <div className="flex items-center gap-3 px-3 py-2 mb-1">
+                <Flame size={13} className="text-orange-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[10px] text-muted/50">Streak · Focus XP</div>
+                  <div className="text-xs font-bold">
+                    <span className="text-orange-400">{streak}d</span>
+                    <span className="text-muted/30 mx-1">·</span>
+                    <span className="text-accent">{focusPoints} XP</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={toggleSettingsModal}
