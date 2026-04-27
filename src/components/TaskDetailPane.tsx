@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, Target, Zap, Brain, BarChart3, Minus, Plus, Circle, CheckCircle2, Trash2, ChevronDown, Wand2, Loader2, Sparkles, Clock } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 import { RichTextEditor } from './RichTextEditor';
+import { TimeTracker } from './TimeTracker';
 
 const GOOGLE_KEY = 'AIzaSyDPW0tks9GLHaT4Tk4NJBofUqz1qH8NgpE';
 
@@ -261,6 +262,12 @@ export function TaskDetailPane() {
                     </select>
                     <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted/30 pointer-events-none" />
                   </div>
+                </div>
+
+                {/* Time Tracking */}
+                <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
+                  <label className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest mb-3 block">Time Tracking</label>
+                  <TimeTracker taskId={task.id} />
                 </div>
 
                 {/* Due Date */}

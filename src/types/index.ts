@@ -35,6 +35,7 @@ export const TaskSchema = z.object({
   status: z.enum(['todo', 'in_progress', 'done']).default('todo'),
   checklist: z.array(ChecklistItemSchema),
   completedAt: z.string().datetime().optional(),
+  timeTracked: z.number().int().min(0).default(0).optional(), // minutes tracked
   createdAt: z.string().datetime(),
 });
 export type Task = z.infer<typeof TaskSchema>;

@@ -14,6 +14,16 @@ class BlitzDB extends Dexie {
       zones: 'id',
       reflections: 'id, date',
     });
+
+    this.version(3).stores({
+      tasks: 'id, zoneId, isTarget, energyLevel, startDate, dueDate, impact, status',
+      zones: 'id',
+      reflections: 'id, date',
+    }).upgrade(tx => {
+      return tx.table('tasks').toCollection().modify(task => {
+        if (task.timeTracked === undefined) task.timeTracked = 0;
+      });
+    });
   }
 }
 

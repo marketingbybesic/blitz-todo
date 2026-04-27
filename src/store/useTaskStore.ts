@@ -50,6 +50,10 @@ interface TaskState {
   setQuickCaptureSelectedZoneId: (id: string | null) => void;
   submitQuickCapture: () => Promise<void>;
   morningTriageDismissed: boolean;
+  activeTimers: Record<string, number>; // taskId → startTimestamp (ms)
+  startTimer: (taskId: string) => void;
+  stopTimer: (taskId: string) => Promise<void>;
+  getTrackedMinutes: (taskId: string) => number;
   morningTriageDismissedDate?: string;
   isMorningTriageOpen: boolean;
   openMorningTriage: () => void;
@@ -72,6 +76,7 @@ export const useTaskStore = create<TaskState>()(
     quickCaptureQuery: '',
     quickCaptureSelectedZoneId: null,
     morningTriageDismissed: false,
+    activeTimers: {},
     morningTriageDismissedDate: undefined,
     isMorningTriageOpen: false,
     isCaptureOpen: false,
@@ -264,6 +269,39 @@ export const useTaskStore = create<TaskState>()(
 
     markMorningTriageChecked: () => {
       set({ morningTriageDismissed: true });
+    },
+
+    startTimer: (taskId) => {
+      const now = Date.now();
+      set(s => ({ activeTimers: { ...s.activeTimers, [taskId]: now } }));
+      // Also set status to in_progress if todo
+      const task = get().tasks.find(t => t.id === taskId);
+      if (task && task.status === 'todo') {
+        db.tasks.update(taskId, { status: 'in_progress' }).then(() => get().loadTasks());
+      }
+    },
+
+    stopTimer: async (taskId) => {
+      const state = get();
+      const startMs = state.activeTimers[taskId];
+      if (!startMs) return;
+      const elapsedMinutes = Math.round((Date.now() - startMs) / 60000);
+      const task = state.tasks.find(t => t.id === taskId);
+      const prevTracked = task?.timeTracked ?? 0;
+      await db.tasks.update(taskId, { timeTracked: prevTracked + elapsedMinutes });
+      const newTimers = { ...state.activeTimers };
+      delete newTimers[taskId];
+      set({ activeTimers: newTimers });
+      await get().loadTasks();
+    },
+
+    getTrackedMinutes: (taskId) => {
+      const state = get();
+      const startMs = state.activeTimers[taskId];
+      const task = state.tasks.find(t => t.id === taskId);
+      const base = task?.timeTracked ?? 0;
+      if (!startMs) return base;
+      return base + Math.round((Date.now() - startMs) / 60000);
     },
 
     openSchedulingWizard: () => {

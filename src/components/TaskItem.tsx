@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Circle, CheckCircle, Brain, Zap, Trash2, Calendar, MapPin, ListChecks, Eye, EyeOff, Clock, Target, Edit3, ArrowRight } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 import type { Task } from '../types';
+import { TimeTracker } from './TimeTracker';
 
 interface TaskItemProps { task: Task; onComplete: (id: string) => void; }
 
@@ -92,6 +93,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
             <span className={`text-[10px] font-semibold ${IMPACT_ACCENT[task.impact ?? 'medium']}`}>
               {task.estimatedMinutes}m
             </span>
+            <TimeTracker taskId={task.id} compact />
             <button type="button" onClick={e => { e.stopPropagation(); setPeeking(p=>!p); }}
               className="text-muted/30 hover:text-muted/70 transition-colors">
               {peeking ? <EyeOff size={12}/> : <Eye size={12}/>}
