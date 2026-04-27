@@ -78,3 +78,8 @@
 
 /* Apple-style selection */
 ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* Force dark styling on inputs in dark mode */
+textarea, input[type="text"], input[type="email"], input[type="password"] {
+  color-scheme: dark;
+}

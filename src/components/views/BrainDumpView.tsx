@@ -141,7 +141,7 @@ Return ONLY a JSON object with project names as keys and arrays of task titles a
           }}
           placeholder="Start typing anything... use ; or new lines to separate multiple tasks"
           rows={4}
-          className="w-full bg-card/40 border border-border/50 rounded-xl px-4 py-3.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40 focus:bg-card/60 resize-none transition-all backdrop-blur-sm leading-relaxed"
+          className="w-full bg-card/60 border border-white/[0.08] rounded-xl px-4 py-3.5 dark:bg-card/60 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40 focus:bg-card/60 resize-none transition-all backdrop-blur-sm leading-relaxed"
         />
 
         {/* Preview of parsed tasks */}
