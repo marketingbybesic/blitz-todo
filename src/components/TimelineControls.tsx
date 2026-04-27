@@ -80,7 +80,9 @@ export function TimelineControls() {
           }`}
         >
           <SlidersHorizontal size={13} />
-          Sort & Filter
+          {timelineSort.key === 'priority' ? 'Priority' : timelineSort.key === 'dueDate' ? 'Due Date' : timelineSort.key === 'impact' ? 'Impact' : 'Duration'}
+          {' '}
+          {timelineSort.direction === 'asc' ? '↑' : '↓'}
           {activeCount > 0 && (
             <span className="ml-0.5 bg-accent text-background text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
               {activeCount}

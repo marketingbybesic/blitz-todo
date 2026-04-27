@@ -26,7 +26,7 @@ function getDateCategory(task: Task): DateBucket {
 }
 
 const GROUP_META: Record<DateBucket, { label: string; sublabel?: string; icon: React.ReactNode; color: string; dot: string }> = {
-  overdue:     { label: 'Overdue',       sublabel: 'Needs attention',   icon: <AlertCircle size={12} />, color: 'text-red-400',    dot: '#f87171' },
+  overdue:     { label: 'Behind Schedule', sublabel: "Let's catch up", icon: <AlertCircle size={12} />, color: 'text-orange-400', dot: '#fb923c' },
   today:       { label: 'Today',         sublabel: 'On your plate now', icon: <Sun size={12} />,         color: 'text-accent',     dot: 'var(--accent)' },
   tomorrow:    { label: 'Tomorrow',      sublabel: 'Coming up next',    icon: <Sunrise size={12} />,     color: 'text-blue-400',   dot: '#60a5fa' },
   later:       { label: 'Later',         sublabel: 'In the pipeline',   icon: <Clock size={12} />,       color: 'text-muted',      dot: '#6b7280' },

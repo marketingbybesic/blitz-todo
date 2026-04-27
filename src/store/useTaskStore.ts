@@ -55,6 +55,7 @@ interface TaskState {
   openMorningTriage: () => void;
   dismissMorningTriage: () => void;
   markMorningTriageChecked: () => void;
+  openSchedulingWizard: () => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -265,6 +266,10 @@ export const useTaskStore = create<TaskState>()(
       set({ morningTriageDismissed: true });
     },
 
+    openSchedulingWizard: () => {
+      set({ isMorningTriageOpen: true, morningTriageDismissed: true });
+    },
+
     toggleFilter: (type) => {
       set((state) => ({
         activeFilters: {
@@ -291,6 +296,11 @@ export const useTaskStore = create<TaskState>()(
     partialize: (state) => ({
       morningTriageDismissed: state.morningTriageDismissed,
       morningTriageDismissedDate: new Date().toDateString(),
+      activeFilters: state.activeFilters,
+      timelineSort: state.timelineSort,
+      timelineGroupByDate: state.timelineGroupByDate,
+      isSidebarOpen: state.isSidebarOpen,
+      currentView: state.currentView,
     }),
     onRehydrateStorage: () => (state) => {
       if (state) {

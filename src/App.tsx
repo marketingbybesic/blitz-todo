@@ -23,6 +23,7 @@ export default function App() {
   const tasks                = useTaskStore(s => s.tasks);
   const morningTriageDismissed = useTaskStore(s => s.morningTriageDismissed);
   const openMorningTriage    = useTaskStore(s => s.openMorningTriage);
+  const openSchedulingWizard = useTaskStore(s => s.openSchedulingWizard);
   const markMorningTriageChecked = useTaskStore(s => s.markMorningTriageChecked);
   const toggleCaptureModal   = useTaskStore(s => s.toggleCaptureModal);
   const loadTasks            = useTaskStore(s => s.loadTasks);

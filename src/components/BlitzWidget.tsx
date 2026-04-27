@@ -1,178 +1,167 @@
 import { useEffect, useMemo, useState } from 'react';
-import { GripHorizontal, ArrowLeft, Brain, Target, CheckCircle2, Play, Pause, RotateCcw } from 'lucide-react';
+import { GripHorizontal, ArrowLeft, CheckCircle2, Pause, Play, RotateCcw, Zap, Brain, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '../store/useTaskStore';
+import type { Task } from '../types';
+
+// ADHD-optimized task selection: 2 quick wins + 1 big task
+function selectBlitzQueue(tasks: Task[]): Task[] {
+  const active = tasks.filter(t => t.status !== 'done');
+  const quick  = active.filter(t => t.estimatedMinutes <= 15).sort((a, b) => {
+    const score = (t: Task) => (t.impact === 'high' ? 3 : t.impact === 'medium' ? 2 : 1) + (t.isTarget ? 5 : 0);
+    return score(b) - score(a);
+  }).slice(0, 2);
+  const big = active.filter(t => t.estimatedMinutes > 15 && !quick.includes(t)).sort((a, b) => {
+    const score = (t: Task) => (t.impact === 'high' ? 3 : t.impact === 'medium' ? 2 : 1) + (t.isTarget ? 5 : 0);
+    return score(b) - score(a);
+  }).slice(0, 1);
+  return [...quick, ...big];
+}
 
 export function BlitzWidget() {
-  const tasks = useTaskStore((state) => state.tasks);
-  const loadTasks = useTaskStore((state) => state.loadTasks);
-  const completeTask = useTaskStore((state) => state.completeTask);
-  const toggleBlitzMode = useTaskStore((state) => state.toggleBlitzMode);
+  const tasks        = useTaskStore(s => s.tasks);
+  const loadTasks    = useTaskStore(s => s.loadTasks);
+  const completeTask = useTaskStore(s => s.completeTask);
+  const toggleBlitzMode = useTaskStore(s => s.toggleBlitzMode);
 
-  const [timerActive, setTimerActive] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [timerActive, setTimerActive]   = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
-  const [timerMode, setTimerMode] = useState<'focus' | 'break'>('focus');
+  const [timerMode, setTimerMode]       = useState<'focus' | 'break'>('focus');
+  const [celebrating, setCelebrating]   = useState(false);
 
+  useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  const queue = useMemo(() => selectBlitzQueue(tasks), [tasks]);
+  const current = queue[currentIdx] ?? null;
+
+  // Reset index if queue shrinks
+  useEffect(() => {
+    if (currentIdx >= queue.length && queue.length > 0) setCurrentIdx(0);
+  }, [queue.length, currentIdx]);
+
+  // Countdown
   useEffect(() => {
     if (!timerActive) return;
-    const interval = setInterval(() => {
-      setTimerSeconds((prev) => {
+    const id = setInterval(() => {
+      setTimerSeconds(prev => {
         if (prev <= 1) {
           setTimerActive(false);
-          setTimerMode((m) => (m === 'focus' ? 'break' : 'focus'));
+          setTimerMode(m => m === 'focus' ? 'break' : 'focus');
           return timerMode === 'focus' ? 5 * 60 : 25 * 60;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
+    return () => clearInterval(id);
   }, [timerActive, timerMode]);
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  const fmt = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const total = timerMode === 'focus' ? 25*60 : 5*60;
+  const circ  = 2 * Math.PI * 40;
+  const offset = circ * (1 - timerSeconds/total);
 
-  const totalSeconds = timerMode === 'focus' ? 25 * 60 : 5 * 60;
-  const circumference = 2 * Math.PI * 36;
-  const progress = timerSeconds / totalSeconds;
-  const strokeDashoffset = circumference * (1 - progress);
-
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
-
-  const topTask = useMemo(() => {
-    const deep = tasks.filter((t) => t.energyLevel === 'deep-work' && t.status !== 'done');
-    if (deep.length === 0) return null;
-
-    const score = (t: (typeof deep)[0]) => {
-      let s = 0;
-      if (t.isTarget) s += 10;
-      s += t.impact === 'high' ? 3 : t.impact === 'medium' ? 2 : 1;
-      return s;
-    };
-
-    return deep.sort((a, b) => score(b) - score(a))[0];
-  }, [tasks]);
+  const handleComplete = async () => {
+    if (!current) return;
+    setCelebrating(true);
+    await completeTask(current.id);
+    setTimeout(() => { setCelebrating(false); setCurrentIdx(0); setTimerActive(false); setTimerSeconds(25*60); setTimerMode('focus'); }, 800);
+  };
 
   return (
-    <div className="min-h-[100dvh] md:h-screen w-screen bg-background flex flex-col overflow-hidden select-none">
-      <header
-        data-tauri-drag-region
-        className="h-10 flex items-center justify-between px-4 bg-card/50 border-b border-border select-none cursor-default"
-      >
-        <div data-tauri-drag-region className="flex items-center gap-2 text-muted">
-          <GripHorizontal size={14} />
-          <span className="text-xs font-medium tracking-wide uppercase">Blitz</span>
+    <div className="h-screen w-screen bg-black flex flex-col overflow-hidden select-none">
+      {/* Drag header */}
+      <div data-tauri-drag-region className="h-9 flex items-center justify-between px-4 border-b border-white/[0.06] flex-shrink-0">
+        <div data-tauri-drag-region className="flex items-center gap-2 text-muted/50">
+          <GripHorizontal size={12} />
+          <span className="text-[10px] font-semibold tracking-[0.2em] uppercase">Blitz</span>
         </div>
-        <button
-          type="button"
-          onClick={toggleBlitzMode}
-          className="flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
-        >
-          <ArrowLeft size={12} />
-          Exit Blitz Mode
+        <button type="button" onClick={toggleBlitzMode}
+          className="flex items-center gap-1 text-[10px] text-muted/40 hover:text-foreground transition-colors">
+          <ArrowLeft size={10} /> Exit
         </button>
-      </header>
+      </div>
 
-      <main className="flex-1 flex flex-col p-5 gap-5">
-        {topTask ? (
+      <main className="flex-1 flex flex-col px-5 py-4 gap-4 overflow-hidden">
+        {/* Celebrate */}
+        <AnimatePresence>
+          {celebrating && (
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center z-10 bg-black/80">
+              <div className="text-center">
+                <div className="text-4xl mb-2">⚡</div>
+                <div className="text-sm font-bold text-accent">Done!</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {queue.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
+            <Zap size={28} className="text-accent/20" />
+            <p className="text-xs text-muted/40">No tasks queued</p>
+            <p className="text-[10px] text-muted/25">Capture something to blitz</p>
+          </div>
+        ) : (
           <>
-            <div className="flex items-center gap-2">
-              <Brain size={14} className="text-accent" />
-              <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">
-                Deep Work
-              </span>
+            {/* Task queue chips */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {queue.map((t, i) => (
+                <button key={t.id} type="button" onClick={() => { setCurrentIdx(i); setTimerActive(false); setTimerSeconds(25*60); setTimerMode('focus'); }}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${i === currentIdx ? 'bg-accent/20 text-accent border border-accent/30' : 'bg-white/[0.04] text-muted border border-transparent'}`}>
+                  {t.estimatedMinutes <= 15 ? <Zap size={9} /> : <Brain size={9} />}
+                  {t.estimatedMinutes}m
+                </button>
+              ))}
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="text-sm font-medium text-foreground leading-snug">
-                  {topTask.title}
-                </h2>
-                {topTask.isTarget && <Target size={14} className="text-accent shrink-0 mt-0.5" />}
+            {/* Current task */}
+            {current && (
+              <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
+                <div className="flex items-start gap-2 mb-2">
+                  <div className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${current.impact === 'high' ? 'bg-accent' : current.impact === 'medium' ? 'bg-blue-400' : 'bg-muted/40'}`} />
+                  <p className="text-sm font-medium text-foreground/90 leading-snug">{current.title}</p>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-muted/50">
+                  <span className="flex items-center gap-1"><Clock size={9}/>{current.estimatedMinutes}m</span>
+                  <span className="capitalize">{current.impact} impact</span>
+                  {current.estimatedMinutes <= 15 && <span className="text-accent/70">Quick win</span>}
+                </div>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-muted">
-                <span className="uppercase tracking-wider">{topTask.impact} Impact</span>
-                <span className="tabular-nums">{topTask.estimatedMinutes}m</span>
-              </div>
-            </div>
+            )}
 
-            {/* Pomodoro Timer */}
+            {/* Pomodoro ring */}
             <div className="flex flex-col items-center gap-3">
-              {/* Circular progress ring */}
-              <div className="relative flex items-center justify-center w-24 h-24">
-                <svg width="96" height="96" className="-rotate-90">
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="36"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-border"
-                  />
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="36"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={strokeDashoffset}
-                    className="text-accent transition-all duration-1000"
-                  />
+              <div className="relative flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                <svg width="96" height="96" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3.5" />
+                  <circle cx="48" cy="48" r="40" fill="none" stroke="var(--accent)" strokeWidth="3.5"
+                    strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+                    style={{ transition: 'stroke-dashoffset 1s linear', filter: 'drop-shadow(0 0 6px var(--accent))' }} />
                 </svg>
                 <div className="absolute flex flex-col items-center">
-                  <span className="text-xl font-bold tabular-nums text-foreground leading-none">
-                    {formatTime(timerSeconds)}
-                  </span>
-                  <span className="text-[9px] font-semibold uppercase tracking-widest text-muted mt-0.5">
-                    {timerMode}
-                  </span>
+                  <span className="text-lg font-bold tabular-nums leading-none">{fmt(timerSeconds)}</span>
+                  <span className="text-[8px] font-semibold uppercase tracking-widest text-muted/40 mt-0.5">{timerMode}</span>
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTimerActive(false);
-                    setTimerMode('focus');
-                    setTimerSeconds(25 * 60);
-                  }}
-                  className="p-2 rounded-md text-muted hover:text-foreground hover:bg-card/5 transition-all"
-                  aria-label="Reset timer"
-                >
-                  <RotateCcw size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimerActive((a) => !a)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium border border-accent/30 text-accent hover:bg-accent hover:text-background transition-all"
-                >
-                  {timerActive ? <Pause size={13} /> : <Play size={13} />}
-                  {timerActive ? 'Pause' : 'Start Focus'}
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => { setTimerActive(false); setTimerMode('focus'); setTimerSeconds(25*60); }}
+                  className="p-1.5 rounded-lg text-muted/40 hover:text-muted transition-colors"><RotateCcw size={12} /></button>
+                <button type="button" onClick={() => setTimerActive(a => !a)}
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${timerActive ? 'bg-white/10 text-foreground' : 'bg-accent/20 text-accent border border-accent/30'}`}>
+                  {timerActive ? <Pause size={11} /> : <Play size={11} />}
+                  {timerActive ? 'Pause' : 'Focus'}
                 </button>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => completeTask(topTask.id)}
-              className="w-full py-2 rounded-md text-xs font-medium text-white/40 hover:text-white hover:bg-card/5 transition-all flex items-center justify-center gap-1.5"
-            >
-              <CheckCircle2 size={12} />
-              Mark Complete
+            {/* Complete */}
+            <button type="button" onClick={handleComplete}
+              className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted/40 hover:text-foreground hover:bg-white/[0.04] transition-all">
+              <CheckCircle2 size={12} /> Mark Done
             </button>
           </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center gap-2">
-            <Brain size={20} className="text-white/10" />
-            <p className="text-xs text-muted">No deep work tasks</p>
-            <p className="text-[11px] text-white/25">Capture one to begin</p>
-          </div>
         )}
       </main>
     </div>

@@ -1,166 +1,146 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Palette, Layout, KeyRound, ChevronLeft, Moon } from 'lucide-react';
+import { X, Palette, Layout, Moon, Check, Save } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 
+const ACCENT_PRESETS = [
+  { label: 'Purple', color: '#a855f7' },
+  { label: 'Blue',   color: '#3b82f6' },
+  { label: 'Cyan',   color: '#06b6d4' },
+  { label: 'Green',  color: '#22c55e' },
+  { label: 'Orange', color: '#f97316' },
+  { label: 'Pink',   color: '#ec4899' },
+];
+
 export function SettingsModal() {
-  const isOpen = useSettingsStore((state) => state.isSettingsOpen);
-  const toggleSettingsModal = useSettingsStore((state) => state.toggleSettingsModal);
-  const accentColor = useSettingsStore((state) => state.accentColor);
-  const setAccentColor = useSettingsStore((state) => state.setAccentColor);
-  const applyAccentColor = useSettingsStore((state) => state.applyAccentColor);
-  const fabAlignment = useSettingsStore((state) => state.fabAlignment);
-  const setFabAlignment = useSettingsStore((state) => state.setFabAlignment);
-  const theme = useSettingsStore((state) => state.theme);
-  const setTheme = useSettingsStore((state) => state.setTheme);
+  const isOpen        = useSettingsStore(s => s.isSettingsOpen);
+  const toggleModal   = useSettingsStore(s => s.toggleSettingsModal);
+  const accentColor   = useSettingsStore(s => s.accentColor);
+  const setAccentColor = useSettingsStore(s => s.setAccentColor);
+  const applyAccentColor = useSettingsStore(s => s.applyAccentColor);
+  const fabAlignment  = useSettingsStore(s => s.fabAlignment);
+  const setFabAlignment = useSettingsStore(s => s.setFabAlignment);
+  const theme         = useSettingsStore(s => s.theme);
+  const setTheme      = useSettingsStore(s => s.setTheme);
+
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        toggleSettingsModal();
-      }
-    };
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && isOpen) toggleModal(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [isOpen, toggleModal]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, toggleSettingsModal]);
+  // Auto-save: every change persists via Zustand persist
+  // Show "saved" indicator briefly after any change
+  const handleChange = (fn: () => void) => {
+    fn(); setSaved(true); setTimeout(() => setSaved(false), 1500);
+  };
 
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const color = e.target.value;
-    setAccentColor(color);
-    applyAccentColor(color);
+  const handleAccent = (color: string) => {
+    handleChange(() => { setAccentColor(color); applyAccentColor(color); });
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[20vh]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              toggleSettingsModal();
-            }
-          }}
+          className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xl flex items-start justify-center pt-[18vh]"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onClick={e => { if (e.target === e.currentTarget) toggleModal(); }}
         >
           <motion.div
-            className="w-full max-w-lg bg-background border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="w-full max-w-md bg-black border border-white/[0.08] rounded-2xl shadow-[0_40px_80px_rgba(0,0,0,0.9)] overflow-hidden"
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.4 }}
-            onClick={(e) => e.stopPropagation()}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+            onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-              <button
-                type="button"
-                onClick={toggleSettingsModal}
-                className="flex items-center gap-1 text-xs text-muted hover:text-white transition-colors md:hidden"
-              >
-                <ChevronLeft size={16} />
-                Back
-              </button>
-              <h3 className="text-sm font-semibold text-foreground tracking-wide">Settings</h3>
-              <button
-                type="button"
-                onClick={toggleSettingsModal}
-                className="hidden md:block p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-card/5 transition-colors"
-              >
-                <X size={16} />
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-sm font-bold tracking-tight">Preferences</h3>
+                <AnimatePresence>
+                  {saved && (
+                    <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
+                      className="flex items-center gap-1 text-[10px] text-green-400 font-medium">
+                      <Check size={10} /> Saved
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <button type="button" onClick={toggleModal}
+                className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-white/[0.05] transition-colors">
+                <X size={14} />
               </button>
             </div>
 
-            <div className="p-6 flex flex-col gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-card border border-white/5 flex items-center justify-center">
-                  <Palette size={14} className="text-muted" />
+            <div className="p-5 flex flex-col gap-6">
+              {/* Theme */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Moon size={13} className="text-muted" />
+                  <span className="text-xs font-semibold text-foreground/80">Theme</span>
                 </div>
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-white/80 block mb-1.5">Accent Color</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={accentColor}
-                      onChange={handleColorChange}
-                      className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
-                    />
-                    <span className="text-xs text-muted font-mono">{accentColor}</span>
-                  </div>
+                <div className="flex gap-2">
+                  {(['dark','midnight','light'] as const).map(t => (
+                    <button key={t} type="button"
+                      onClick={() => handleChange(() => setTheme(t))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all border ${
+                        theme === t
+                          ? 'bg-accent/15 text-accent border-accent/30 shadow-[0_0_12px_color-mix(in_srgb,var(--accent)_15%,transparent)]'
+                          : 'bg-white/[0.04] text-muted border-transparent hover:border-white/10 hover:text-foreground'
+                      }`}>{t}</button>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-card border border-white/5 flex items-center justify-center">
-                  <Layout size={14} className="text-muted" />
+              {/* Accent color */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Palette size={13} className="text-muted" />
+                  <span className="text-xs font-semibold text-foreground/80">Accent Color</span>
                 </div>
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-white/80 block mb-1.5">FAB Alignment</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFabAlignment('left')}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border ${
-                        fabAlignment === 'left'
-                          ? 'bg-accent/20 text-accent border-accent/30'
-                          : 'bg-card text-muted border-white/5 hover:text-white/60'
-                      }`}
-                    >
-                      Left
+                <div className="flex items-center gap-2 flex-wrap">
+                  {ACCENT_PRESETS.map(p => (
+                    <button key={p.color} type="button" onClick={() => handleAccent(p.color)}
+                      title={p.label}
+                      className="w-7 h-7 rounded-full transition-all border-2 flex items-center justify-center"
+                      style={{ background: p.color, borderColor: accentColor === p.color ? p.color : 'transparent',
+                               boxShadow: accentColor === p.color ? `0 0 10px ${p.color}60` : 'none' }}>
+                      {accentColor === p.color && <Check size={12} color="#fff" strokeWidth={3} />}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setFabAlignment('right')}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border ${
-                        fabAlignment === 'right'
-                          ? 'bg-accent/20 text-accent border-accent/30'
-                          : 'bg-card text-muted border-white/5 hover:text-white/60'
-                      }`}
-                    >
-                      Right
-                    </button>
-                  </div>
+                  ))}
+                  <input type="color" value={accentColor} title="Custom color"
+                    onChange={e => handleAccent(e.target.value)}
+                    className="w-7 h-7 rounded-full cursor-pointer border-0 bg-transparent p-0 overflow-hidden" />
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center">
-                  <Moon size={14} className="text-muted" />
+              {/* FAB alignment */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Layout size={13} className="text-muted" />
+                  <span className="text-xs font-semibold text-foreground/80">Quick Add Button</span>
                 </div>
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-foreground/80 block mb-2">Theme</label>
-                  <div className="flex items-center gap-2">
-                    {(['dark', 'midnight', 'light'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTheme(t)}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all border capitalize ${
-                          theme === t
-                            ? 'bg-accent/20 text-accent border-accent/30'
-                            : 'bg-card text-muted border-border hover:text-foreground/60'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex gap-2">
+                  {(['left','right'] as const).map(a => (
+                    <button key={a} type="button"
+                      onClick={() => handleChange(() => setFabAlignment(a))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all border ${
+                        fabAlignment === a
+                          ? 'bg-accent/15 text-accent border-accent/30'
+                          : 'bg-white/[0.04] text-muted border-transparent hover:border-white/10 hover:text-foreground'
+                      }`}>{a}</button>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-card border border-white/5 flex items-center justify-center">
-                  <KeyRound size={14} className="text-muted" />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-white/80 block mb-1.5">API Key</label>
-                  <input
-                    type="password"
-                    placeholder="Enter your API key..."
-                    className="w-full bg-card border border-white/5 rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-white/20 focus:outline-none focus:border-accent/30 transition-colors"
-                  />
-                </div>
+              {/* Auto-save note */}
+              <div className="flex items-center gap-1.5 text-[10px] text-muted/40">
+                <Save size={9} />
+                All changes save automatically
               </div>
             </div>
           </motion.div>
