@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, FolderPlus, Loader2, CheckCircle2, Wand2 } from 'lucide-react';
+import {
+  Sparkles, FolderPlus, Loader2, CheckCircle2, Wand2,
+  FileText, Plus, PlusCircle, User, Flag,
+} from 'lucide-react';
 import { TaskItem } from '../TaskItem';
 import { useTaskStore } from '../../store/useTaskStore';
 import { calculatePriority } from '../../lib/priority';
@@ -11,38 +14,67 @@ const GOOGLE_KEY = 'AIzaSyDPW0tks9GLHaT4Tk4NJBofUqz1qH8NgpE';
 async function callGemini(prompt: string): Promise<string> {
   const r = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 1024 } }) }
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 1024 },
+      }),
+    }
   );
   const d = await r.json();
   return d.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
 function parseDumpText(raw: string): string[] {
-  // Split on ; or newlines, filter empty
   return raw
     .split(/[;\n]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 2);
+    .map((s) => s.trim())
+    .filter((s) => s.length > 2);
 }
 
-export function BrainDumpView() {
-  const tasks       = useTaskStore(s => s.tasks);
-  const loadTasks   = useTaskStore(s => s.loadTasks);
-  const addTask     = useTaskStore(s => s.addTask);
-  const addZone     = useTaskStore(s => s.addZone);
-  const completeTask = useTaskStore(s => s.completeTask);
-  const sorted      = useTaskStore(s => s.brainDumpSorted);
+type MeetingActionItem = {
+  title: string;
+  owner: string;
+  priority: 'high' | 'medium' | 'low';
+  notes: string;
+};
 
+type Tab = 'dump' | 'meeting';
+
+const PRIORITY_COLORS: Record<string, string> = {
+  high: 'text-red-400 bg-red-500/10 border-red-500/20',
+  medium: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+  low: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+};
+
+export function BrainDumpView() {
+  const tasks = useTaskStore((s) => s.tasks);
+  const loadTasks = useTaskStore((s) => s.loadTasks);
+  const addTask = useTaskStore((s) => s.addTask);
+  const addZone = useTaskStore((s) => s.addZone);
+  const completeTask = useTaskStore((s) => s.completeTask);
+  const sorted = useTaskStore((s) => s.brainDumpSorted);
+
+  const [activeTab, setActiveTab] = useState<Tab>('dump');
+
+  // Brain Dump tab state
   const [dumpText, setDumpText] = useState('');
   const [aiLoading, setAiLoading] = useState<'tasks' | 'projects' | null>(null);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [preview, setPreview] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Meeting Notes tab state
+  const [meetingText, setMeetingText] = useState('');
+  const [meetingLoading, setMeetingLoading] = useState(false);
+  const [meetingItems, setMeetingItems] = useState<MeetingActionItem[]>([]);
+  const [meetingResult, setMeetingResult] = useState<string | null>(null);
+  const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  // Auto-detect ; or newlines and show preview
   useEffect(() => {
     const lines = parseDumpText(dumpText);
     setPreview(lines.length > 1 ? lines : []);
@@ -54,8 +86,9 @@ export function BrainDumpView() {
     for (const title of lines) {
       await addTask({ title, energyLevel: 'light-work', estimatedMinutes: 15, isTarget: false, status: 'todo', impact: 'medium', dueDate: undefined, content: undefined, zoneId: undefined, startDate: undefined, checklist: [] });
     }
-    setDumpText(''); setPreview([]);
-    setAiResult(`✓ Added ${lines.length} task${lines.length !== 1 ? 's' : ''}`);
+    setDumpText('');
+    setPreview([]);
+    setAiResult(`Added ${lines.length} task${lines.length !== 1 ? 's' : ''}`);
     setTimeout(() => setAiResult(null), 2500);
   }, [dumpText, addTask]);
 
@@ -77,10 +110,10 @@ Return ONLY a JSON array of task title strings. Max 8 tasks. Be specific and act
           await addTask({ title, energyLevel: 'light-work', estimatedMinutes: 20, isTarget: false, status: 'todo', impact: 'medium', dueDate: undefined, content: undefined, zoneId: undefined, startDate: undefined, checklist: [] });
         }
         setDumpText('');
-        setAiResult(`✓ Generated ${taskTitles.length} tasks from your dump`);
+        setAiResult(`Generated ${taskTitles.length} tasks from your dump`);
         setTimeout(() => setAiResult(null), 3000);
       }
-    } catch (e) { setAiResult('Error — check your connection'); setTimeout(() => setAiResult(null), 3000); }
+    } catch { setAiResult('Error — check your connection'); setTimeout(() => setAiResult(null), 3000); }
     finally { setAiLoading(null); }
   }, [dumpText, addTask]);
 
@@ -102,117 +135,329 @@ Return ONLY a JSON object with project names as keys and arrays of task titles a
         let totalTasks = 0;
         for (const [projectName, taskTitles] of Object.entries(projects)) {
           await addZone(projectName);
-          // Load zones to get the new zone ID
           const { zones } = useTaskStore.getState();
-          const zone = zones.find(z => z.name === projectName);
+          const zone = zones.find((z) => z.name === projectName);
           for (const title of taskTitles) {
             await addTask({ title, energyLevel: 'light-work', estimatedMinutes: 25, isTarget: false, status: 'todo', impact: 'medium', dueDate: undefined, content: undefined, zoneId: zone?.id, startDate: undefined, checklist: [] });
             totalTasks++;
           }
         }
         setDumpText('');
-        setAiResult(`✓ Created ${Object.keys(projects).length} projects, ${totalTasks} tasks`);
+        setAiResult(`Created ${Object.keys(projects).length} projects, ${totalTasks} tasks`);
         setTimeout(() => setAiResult(null), 3500);
       }
-    } catch (e) { setAiResult('Error generating projects'); setTimeout(() => setAiResult(null), 3000); }
+    } catch { setAiResult('Error generating projects'); setTimeout(() => setAiResult(null), 3000); }
     finally { setAiLoading(null); }
   }, [dumpText, addTask, addZone]);
 
-  const chaosTasks = tasks.filter(t => t.status !== 'done' && !t.startDate && !t.dueDate);
-  const displayTasks = sorted ? [...chaosTasks].sort((a, b) => calculatePriority(b) - calculatePriority(a)) : chaosTasks;
+  // Meeting notes extraction
+  const extractMeetingActions = useCallback(async () => {
+    const text = meetingText.trim();
+    if (!text) return;
+    setMeetingLoading(true);
+    setMeetingItems([]);
+    setAddedItems(new Set());
+    try {
+      const prompt = `Extract all action items, decisions made, and follow-up tasks from these meeting notes. Return JSON array of objects: [{"title": "task title", "owner": "person name or 'Me'", "priority": "high|medium|low", "notes": "context"}]
+
+Meeting notes:
+${text}
+
+Return ONLY the JSON array, no other text.`;
+      const resp = await callGemini(prompt);
+      const match = resp.match(/\[[\s\S]*\]/);
+      if (match) {
+        const items: MeetingActionItem[] = JSON.parse(match[0]);
+        setMeetingItems(items);
+        setMeetingResult(`Found ${items.length} action item${items.length !== 1 ? 's' : ''}`);
+        setTimeout(() => setMeetingResult(null), 3000);
+      } else {
+        setMeetingResult('No action items found');
+        setTimeout(() => setMeetingResult(null), 2500);
+      }
+    } catch {
+      setMeetingResult('Error — check your connection');
+      setTimeout(() => setMeetingResult(null), 3000);
+    } finally {
+      setMeetingLoading(false);
+    }
+  }, [meetingText]);
+
+  const addMeetingTask = useCallback(async (item: MeetingActionItem, index: number) => {
+    const priorityMap: Record<string, 'high' | 'medium' | 'low'> = {
+      high: 'high', medium: 'medium', low: 'low',
+    };
+    await addTask({
+      title: item.title,
+      energyLevel: 'light-work',
+      estimatedMinutes: 20,
+      isTarget: false,
+      status: 'todo',
+      impact: priorityMap[item.priority] ?? 'medium',
+      dueDate: undefined,
+      content: item.notes || undefined,
+      zoneId: undefined,
+      startDate: undefined,
+      checklist: [],
+    });
+    setAddedItems((prev) => new Set(prev).add(index));
+  }, [addTask]);
+
+  const addAllMeetingTasks = useCallback(async () => {
+    for (let i = 0; i < meetingItems.length; i++) {
+      if (!addedItems.has(i)) {
+        await addMeetingTask(meetingItems[i], i);
+      }
+    }
+  }, [meetingItems, addedItems, addMeetingTask]);
+
+  const chaosTasks = tasks.filter((t) => t.status !== 'done' && !t.startDate && !t.dueDate);
+  const displayTasks = sorted
+    ? [...chaosTasks].sort((a, b) => calculatePriority(b) - calculatePriority(a))
+    : chaosTasks;
 
   return (
     <div className="max-w-3xl mx-auto pt-10 px-6 pb-24">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header + tabs */}
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Brain Dump</h1>
           <p className="text-xs text-muted mt-0.5">Capture anything. AI will organise it.</p>
         </div>
       </div>
 
-      {/* Dump input */}
-      <div className="relative mb-4">
-        <textarea
-          ref={textareaRef}
-          value={dumpText}
-          onChange={e => setDumpText(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitDump(); }
-          }}
-          placeholder="Start typing anything... use ; or new lines to separate multiple tasks"
-          rows={4}
-          className="w-full bg-card/60 border border-white/[0.08] rounded-xl px-4 py-3.5 dark:bg-card/60 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40 focus:bg-card/60 resize-none transition-all backdrop-blur-sm leading-relaxed"
-        />
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-white/[0.04] rounded-xl border border-white/[0.06] mb-6 w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('dump')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            activeTab === 'dump'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-white/40 hover:text-white/70'
+          }`}
+        >
+          <Wand2 size={12} />
+          Brain Dump
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('meeting')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            activeTab === 'meeting'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-white/40 hover:text-white/70'
+          }`}
+        >
+          <FileText size={12} />
+          Meeting Notes
+        </button>
+      </div>
 
-        {/* Preview of parsed tasks */}
-        <AnimatePresence>
-          {preview.length > 1 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-2 px-3 py-2 bg-accent/5 border border-accent/15 rounded-lg"
-            >
-              <div className="text-[10px] font-semibold text-accent/70 uppercase tracking-widest mb-1.5">
-                {preview.length} tasks detected
+      {/* --- Brain Dump Tab --- */}
+      {activeTab === 'dump' && (
+        <>
+          <div className="relative mb-4">
+            <textarea
+              ref={textareaRef}
+              value={dumpText}
+              onChange={(e) => setDumpText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitDump(); }
+              }}
+              placeholder="Start typing anything... use ; or new lines to separate multiple tasks"
+              rows={4}
+              className="w-full bg-card/60 border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40 resize-none transition-all backdrop-blur-sm leading-relaxed"
+            />
+            <AnimatePresence>
+              {preview.length > 1 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-2 px-3 py-2 bg-accent/5 border border-accent/15 rounded-lg"
+                >
+                  <div className="text-[10px] font-semibold text-accent/70 uppercase tracking-widest mb-1.5">
+                    {preview.length} tasks detected
+                  </div>
+                  {preview.slice(0, 5).map((t, i) => (
+                    <div key={i} className="text-xs text-muted flex items-center gap-1.5 py-0.5">
+                      <div className="w-1 h-1 rounded-full bg-accent/40" />
+                      {t}
+                    </div>
+                  ))}
+                  {preview.length > 5 && (
+                    <div className="text-[10px] text-muted/40 mt-1">+{preview.length - 5} more</div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex items-center gap-2 mb-8">
+            {dumpText.trim() && (
+              <button type="button" onClick={submitDump}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-background hover:opacity-90 active:scale-95 transition-all shadow-[0_0_16px_color-mix(in_srgb,var(--accent)_25%,transparent)]">
+                <CheckCircle2 size={13} />
+                Add {preview.length > 1 ? `${preview.length} Tasks` : 'Task'}
+              </button>
+            )}
+            <button type="button" onClick={generateTasks} disabled={!dumpText.trim() || aiLoading !== null}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border hover:border-accent/30 hover:text-accent text-muted disabled:opacity-40 transition-all backdrop-blur-sm">
+              {aiLoading === 'tasks' ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+              Generate Tasks
+            </button>
+            <button type="button" onClick={generateProjects} disabled={!dumpText.trim() || aiLoading !== null}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border hover:border-accent/30 hover:text-accent text-muted disabled:opacity-40 transition-all backdrop-blur-sm">
+              {aiLoading === 'projects' ? <Loader2 size={13} className="animate-spin" /> : <FolderPlus size={13} />}
+              Generate Projects
+            </button>
+            <div className="text-[10px] text-muted/40 ml-auto">⌘↵ to add</div>
+          </div>
+
+          <AnimatePresence>
+            {aiResult && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                className="mb-6 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-medium">
+                <Sparkles size={13} />
+                {aiResult}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {chaosTasks.length === 0 ? (
+            <div className="text-sm text-muted/50"><Typewriter /></div>
+          ) : (
+            <div>
+              <div className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest mb-3">
+                Unscheduled · {chaosTasks.length}
               </div>
-              {preview.slice(0, 5).map((t, i) => (
-                <div key={i} className="text-xs text-muted flex items-center gap-1.5 py-0.5">
-                  <div className="w-1 h-1 rounded-full bg-accent/40" />
-                  {t}
-                </div>
-              ))}
-              {preview.length > 5 && <div className="text-[10px] text-muted/40 mt-1">+{preview.length - 5} more</div>}
-            </motion.div>
+              <div className="flex flex-col gap-1">
+                {displayTasks.map((task) => (
+                  <TaskItem key={task.id} task={task} onComplete={completeTask} />
+                ))}
+              </div>
+            </div>
           )}
-        </AnimatePresence>
-      </div>
+        </>
+      )}
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-2 mb-8">
-        {dumpText.trim() && (
-          <button type="button" onClick={submitDump}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-background hover:opacity-90 active:scale-95 transition-all shadow-[0_0_16px_color-mix(in_srgb,var(--accent)_25%,transparent)]">
-            <CheckCircle2 size={13} />
-            Add {preview.length > 1 ? `${preview.length} Tasks` : 'Task'}
-          </button>
-        )}
-        <button type="button" onClick={generateTasks} disabled={!dumpText.trim() || aiLoading !== null}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border hover:border-accent/30 hover:text-accent text-muted disabled:opacity-40 transition-all backdrop-blur-sm">
-          {aiLoading === 'tasks' ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-          Generate Tasks
-        </button>
-        <button type="button" onClick={generateProjects} disabled={!dumpText.trim() || aiLoading !== null}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border hover:border-accent/30 hover:text-accent text-muted disabled:opacity-40 transition-all backdrop-blur-sm">
-          {aiLoading === 'projects' ? <Loader2 size={13} className="animate-spin" /> : <FolderPlus size={13} />}
-          Generate Projects
-        </button>
-        <div className="text-[10px] text-muted/40 ml-auto">⌘↵ to add</div>
-      </div>
-
-      {/* AI result toast */}
-      <AnimatePresence>
-        {aiResult && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="mb-6 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-medium">
-            <Sparkles size={13} />
-            {aiResult}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Existing brain dump tasks */}
-      {chaosTasks.length === 0 ? (
-        <div className="text-sm text-muted/50"><Typewriter /></div>
-      ) : (
-        <div>
-          <div className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest mb-3">
-            Unscheduled · {chaosTasks.length}
+      {/* --- Meeting Notes Tab --- */}
+      {activeTab === 'meeting' && (
+        <>
+          <div className="mb-4">
+            <textarea
+              value={meetingText}
+              onChange={(e) => setMeetingText(e.target.value)}
+              placeholder="Paste your meeting notes, transcript, or email thread..."
+              rows={6}
+              className="w-full bg-card/60 border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40 resize-none transition-all backdrop-blur-sm leading-relaxed"
+            />
           </div>
-          <div className="flex flex-col gap-1">
-            {displayTasks.map(task => <TaskItem key={task.id} task={task} onComplete={completeTask} />)}
+
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              type="button"
+              onClick={extractMeetingActions}
+              disabled={!meetingText.trim() || meetingLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-background hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              {meetingLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              Extract Action Items
+            </button>
           </div>
-        </div>
+
+          <AnimatePresence>
+            {meetingResult && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-medium"
+              >
+                <Sparkles size={13} />
+                {meetingResult}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {meetingItems.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest">
+                  Action Items · {meetingItems.length}
+                </div>
+                <button
+                  type="button"
+                  onClick={addAllMeetingTasks}
+                  disabled={addedItems.size === meetingItems.length}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent/15 text-accent border border-accent/25 hover:bg-accent/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <PlusCircle size={11} />
+                  Add All
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {meetingItems.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="bg-black/50 border border-white/[0.06] rounded-2xl p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium mb-2 ${addedItems.has(index) ? 'text-white/40 line-through' : 'text-white/85'}`}>
+                          {item.title}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Owner badge */}
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-white/40 bg-white/[0.05] border border-white/[0.06] px-2 py-0.5 rounded-full">
+                            <User size={9} />
+                            {item.owner}
+                          </span>
+                          {/* Priority badge */}
+                          <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium}`}>
+                            <Flag size={9} />
+                            {item.priority}
+                          </span>
+                        </div>
+                        {item.notes && (
+                          <p className="text-[11px] text-white/30 mt-1.5 leading-relaxed">{item.notes}</p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => addMeetingTask(item, index)}
+                        disabled={addedItems.has(index)}
+                        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          addedItems.has(index)
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-default'
+                            : 'bg-white/[0.05] text-white/50 border border-white/[0.08] hover:bg-accent/15 hover:text-accent hover:border-accent/25'
+                        }`}
+                      >
+                        {addedItems.has(index) ? (
+                          <><CheckCircle2 size={11} /> Added</>
+                        ) : (
+                          <><Plus size={11} /> Add Task</>
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {meetingItems.length === 0 && !meetingLoading && (
+            <div className="text-center py-12 text-white/20 text-sm">
+              Paste meeting notes above and click "Extract Action Items"
+            </div>
+          )}
+        </>
       )}
     </div>
   );
