@@ -46,21 +46,23 @@
       "appimage": {
         "bundleMediaFramework": true
       },
-      "category": "Office"
+      "desktop": {
+        "category": "Office"
+      }
     },
     "macOS": {
       "minimumSystemVersion": "10.15"
-    },
-    "updater": {
-      "active": true,
-      "pubkey": "",
-      "endpoints": [
-        "https://github.com/marketingbybesic/blitz-todo/releases/latest/download/latest.json"
-      ],
-      "dialog": true,
-      "windows": {
-        "installMode": "passive"
-      }
+    }
+  },
+  "updater": {
+    "active": true,
+    "pubkey": "",
+    "endpoints": [
+      "https://github.com/marketingbybesic/blitz-todo/releases/latest/download/latest.json"
+    ],
+    "dialog": true,
+    "windows": {
+      "installMode": "passive"
     }
   }
 }
