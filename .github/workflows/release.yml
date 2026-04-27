@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            arch: aarch64
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            arch: x86_64
+          - platform: windows-latest
+            args: ''
+            arch: x86_64
+          - platform: ubuntu-22.04
+            args: ''
+            arch: x86_64
+
+    runs-on: ${{ matrix.platform }}
+    name: Build (${{ matrix.platform }} ${{ matrix.arch }})
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && matrix.args != '' && (matrix.args == '--target aarch64-apple-darwin' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') || '' }}
+
+      - name: Cache Rust cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-cargo-
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (dev build on push to main)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          args: ${{ matrix.args }}
+
+      - name: Build Tauri app and create release (on tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Blitz ${{ github.ref_name }}'
+          releaseBody: |
+            ## Blitz ${{ github.ref_name }}
+
+            ADHD Productivity Engine — cross-platform release.
+
+            ### Downloads
+            - **macOS (Apple Silicon):** `Blitz_*_aarch64.dmg`
+            - **macOS (Intel):** `Blitz_*_x64.dmg`
+            - **Windows:** `Blitz_*_x64-setup.exe` or `Blitz_*_x64_en-US.msi`
+            - **Linux AppImage:** `blitz_*_amd64.AppImage`
+            - **Linux Debian:** `blitz_*_amd64.deb`
+
+            See [CHANGELOG](https://github.com/marketingbybesic/blitz-todo/blob/main/CHANGELOG.md) for what's new.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

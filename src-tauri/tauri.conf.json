@@ -12,13 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "BLITZ",
-        "width": 800,
-        "height": 600,
-        "minWidth": 350,
+        "title": "Blitz",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true
       }
@@ -36,6 +38,29 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      },
+      "category": "Office"
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "updater": {
+      "active": true,
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/marketingbybesic/blitz-todo/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
