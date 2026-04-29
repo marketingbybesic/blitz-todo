@@ -74,7 +74,7 @@ export function Dashboard() {
       {/* Topbar */}
       <header
         data-tauri-drag-region="true"
-        className="flex items-center gap-3 px-4 h-12 border-b border-border/60 flex-shrink-0 bg-background/90 backdrop-blur-xl select-none"
+        className="flex items-center gap-3 px-4 h-12 flex-shrink-0 bg-background/90 backdrop-blur-xl select-none"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {!isSidebarOpen && (
