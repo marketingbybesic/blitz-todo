@@ -35,7 +35,7 @@ const GROUP_META: Record<DateBucket, { label: string; sublabel?: string; icon: R
   unscheduled: { label: 'Unscheduled',   sublabel: 'No date set',       icon: <CalendarOff size={12} />, color: 'text-muted/50',   dot: '#374151' },
 };
 
-function GroupSection({ bucket, tasks, onComplete }: { bucket: DateBucket; tasks: Task[]; onComplete: (id: string) => void }) {
+function GroupSection({ bucket, tasks, onComplete }: { bucket: DateBucket; tasks: Task[]; onComplete: (id: string) => Promise<void> }) {
   if (tasks.length === 0) return null;
   const meta = GROUP_META[bucket];
 
