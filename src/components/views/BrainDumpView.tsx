@@ -9,23 +9,7 @@ import { useTaskStore } from '../../store/useTaskStore';
 import { calculatePriority } from '../../lib/priority';
 import { Typewriter } from '../Typewriter';
 
-const GOOGLE_KEY = 'AIzaSyDPW0tks9GLHaT4Tk4NJBofUqz1qH8NgpE';
-
-async function callGemini(prompt: string): Promise<string> {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 1024 },
-      }),
-    }
-  );
-  const d = await r.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-}
+import { callAI } from '../../lib/ai';
 
 function parseDumpText(raw: string): string[] {
   return raw
@@ -102,7 +86,7 @@ export function BrainDumpView() {
 Brain dump: "${text}"
 
 Return ONLY a JSON array of task title strings. Max 8 tasks. Be specific and action-oriented. Format: ["task 1", "task 2"]`;
-      const resp = await callGemini(prompt);
+      const resp = await callAI(prompt);
       const match = resp.match(/\[[\s\S]*?\]/);
       if (match) {
         const taskTitles: string[] = JSON.parse(match[0]);
@@ -128,7 +112,7 @@ Brain dump: "${text}"
 
 Return ONLY a JSON object with project names as keys and arrays of task titles as values. Max 3 projects, 4 tasks each. Format:
 {"Project Name": ["task 1", "task 2"], "Project 2": ["task 1"]}`;
-      const resp = await callGemini(prompt);
+      const resp = await callAI(prompt);
       const match = resp.match(/\{[\s\S]*?\}/);
       if (match) {
         const projects: Record<string, string[]> = JSON.parse(match[0]);
@@ -164,7 +148,7 @@ Meeting notes:
 ${text}
 
 Return ONLY the JSON array, no other text.`;
-      const resp = await callGemini(prompt);
+      const resp = await callAI(prompt);
       const match = resp.match(/\[[\s\S]*\]/);
       if (match) {
         const items: MeetingActionItem[] = JSON.parse(match[0]);

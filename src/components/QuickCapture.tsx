@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, ArrowUpRight, Zap, Feather, TrendingUp, Minus, TrendingDown } from 'lucide-react';
+import { X, ArrowUpRight, Zap, Feather, TrendingUp, Minus, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
+import { parseNaturalLanguageTask, isUserAIEnabled } from '../lib/ai';
 
 type EnergyLevel = 'deep-work' | 'light-work';
 type Impact = 'high' | 'medium' | 'low';
@@ -18,6 +19,7 @@ export function QuickCapture() {
 
   const [energy, setEnergy] = useState<EnergyLevel>('light-work');
   const [impact, setImpact] = useState<Impact>('medium');
+  const [isAiParsing, setIsAiParsing] = useState(false);
 
   const close = useCallback(() => {
     if (isOpen) toggleCaptureModal();
@@ -31,7 +33,53 @@ export function QuickCapture() {
     const title = query.trim();
     if (!title) return;
 
-    // Parse hashtags for zone matching
+    // Try AI parsing if enabled
+    if (isUserAIEnabled()) {
+      setIsAiParsing(true);
+      try {
+        const parsed = await parseNaturalLanguageTask(title);
+        const priorityToImpact = (p: string | undefined): Impact => {
+          if (p === 'high') return 'high';
+          if (p === 'low') return 'low';
+          return 'medium';
+        };
+        const currentZones = useTaskStore.getState().zones;
+        let zoneId: string | undefined = selectedZoneId || undefined;
+        if (parsed.tags && parsed.tags.length > 0 && !zoneId) {
+          for (const tag of parsed.tags) {
+            const matched = currentZones.find(
+              (z) => z.name.toLowerCase().replace(/\s+/g, '-') === tag.toLowerCase() ||
+                     z.name.toLowerCase().replace(/\s+/g, '') === tag.toLowerCase()
+            );
+            if (matched) { zoneId = matched.id; break; }
+          }
+        }
+        const resolvedEnergy: EnergyLevel = (parsed.energyLevel === 'deep-work' || parsed.energyLevel === 'light-work')
+          ? parsed.energyLevel
+          : energy;
+        await addTask({
+          title: parsed.title ?? title,
+          energyLevel: resolvedEnergy,
+          estimatedMinutes: parsed.estimatedMinutes ?? (resolvedEnergy === 'deep-work' ? 45 : 15),
+          isTarget: false,
+          status: 'todo',
+          impact: priorityToImpact(parsed.priority),
+          dueDate: parsed.dueDate,
+          content: undefined,
+          zoneId,
+          startDate: undefined,
+          checklist: [],
+        });
+        close();
+        return;
+      } catch {
+        // Fall through to manual parse
+      } finally {
+        setIsAiParsing(false);
+      }
+    }
+
+    // Manual hashtag parsing (fallback or when AI is disabled)
     const hashtagRegex = /#([\w-]+)/g;
     const hashtags: string[] = [];
     let match: RegExpExecArray | null;
@@ -108,17 +156,26 @@ export function QuickCapture() {
             </button>
 
             {/* Main card */}
-            <div className="bg-black border border-white/[0.08] rounded-2xl p-4 shadow-[0_40px_80px_rgba(0,0,0,0.9)]">
+            <div className={`bg-black border rounded-2xl p-4 shadow-[0_40px_80px_rgba(0,0,0,0.9)] transition-all ${isUserAIEnabled() ? 'border-accent/30 shadow-[0_40px_80px_rgba(0,0,0,0.9),0_0_20px_color-mix(in_srgb,var(--accent)_10%,transparent)]' : 'border-white/[0.08]'}`}>
 
-              {/* Input */}
-              <input
-                autoFocus
-                type="text"
-                placeholder="What needs to get done?"
-                className="text-foreground text-lg font-medium placeholder:text-white/20 focus:outline-none bg-transparent w-full mb-4"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              {/* Input row with optional AI sparkle */}
+              <div className="relative flex items-center mb-4">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder={isUserAIEnabled() ? "Type naturally, e.g. 'Call John tomorrow !high'" : "What needs to get done?"}
+                  className="text-foreground text-lg font-medium placeholder:text-white/20 focus:outline-none bg-transparent w-full pr-6"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {isUserAIEnabled() && (
+                  <Sparkles
+                    size={14}
+                    className="absolute right-0 text-accent/60"
+                    style={{ filter: 'drop-shadow(0 0 4px var(--accent))' }}
+                  />
+                )}
+              </div>
 
               {/* Zone picker chips */}
               {zones.length > 0 && (
@@ -230,15 +287,21 @@ export function QuickCapture() {
 
               {/* Footer */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-white/20 font-mono">↵ to capture</span>
+                {isUserAIEnabled() ? (
+                  <span className="text-[10px] text-accent/30 font-mono">
+                    ✦ AI mode — type naturally, e.g. 'Call John tomorrow !high'
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-white/20 font-mono">↵ to capture</span>
+                )}
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!query.trim()}
+                  disabled={!query.trim() || isAiParsing}
                   className="flex items-center gap-1.5 bg-accent text-background px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
-                  <ArrowUpRight size={14} />
-                  Capture
+                  {isAiParsing ? <Loader2 size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}
+                  {isAiParsing ? 'Parsing…' : 'Capture'}
                 </button>
               </div>
             </div>

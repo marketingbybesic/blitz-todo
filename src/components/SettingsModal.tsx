@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Palette, Layout, Moon, Check, Save, Calendar, FolderSync, Bell, Timer, BarChart3, Upload } from 'lucide-react';
+import { X, Palette, Layout, Moon, Check, Save, Calendar, FolderSync, Bell, Timer, BarChart3, Upload, Sparkles } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { parseICal } from '../lib/ical';
+import type { AIProvider } from '../lib/ai';
 
 const ACCENT_PRESETS = [
   { label: 'Purple', color: '#a855f7' },
@@ -13,7 +14,13 @@ const ACCENT_PRESETS = [
   { label: 'Pink',   color: '#ec4899' },
 ];
 
-type Tab = 'appearance' | 'calendar' | 'sync' | 'focus' | 'data';
+const DEFAULT_MODELS: Record<AIProvider, string> = {
+  openai: 'gpt-4o-mini',
+  anthropic: 'claude-3-haiku-20240307',
+  gemini: 'gemini-2.0-flash',
+};
+
+type Tab = 'appearance' | 'calendar' | 'sync' | 'focus' | 'data' | 'ai';
 
 export function SettingsModal() {
   const isOpen   = useSettingsStore(s => s.isSettingsOpen);
@@ -37,11 +44,22 @@ export function SettingsModal() {
   const toggleStats   = useSettingsStore(s => s.toggleStats);
   const streak     = useSettingsStore(s => s.streak);
   const focusPoints = useSettingsStore(s => s.focusPoints);
+  const aiEnabled      = useSettingsStore(s => s.aiEnabled);
+  const aiProvider     = useSettingsStore(s => s.aiProvider);
+  const aiModel        = useSettingsStore(s => s.aiModel);
+  const userApiKey     = useSettingsStore(s => s.userApiKey);
+  const setUserApiKey  = useSettingsStore(s => s.setUserApiKey);
+  const clearUserApiKey = useSettingsStore(s => s.clearUserApiKey);
 
   const [tab, setTab] = useState<Tab>('appearance');
   const [saved, setSaved] = useState(false);
   const [syncFolderInput, setSyncFolderInput] = useState(syncFolder);
   const calInputRef = useRef<HTMLInputElement>(null);
+
+  // AI tab local state
+  const [aiProviderInput, setAiProviderInput] = useState<AIProvider>(aiProvider);
+  const [aiModelInput, setAiModelInput] = useState(aiModel || DEFAULT_MODELS[aiProvider]);
+  const [aiKeyInput, setAiKeyInput] = useState(userApiKey);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && isOpen) toggle(); };
@@ -66,6 +84,7 @@ export function SettingsModal() {
     { id: 'calendar',   icon: <Calendar size={14}/>, label: 'Calendar' },
     { id: 'sync',       icon: <FolderSync size={14}/>, label: 'Sync' },
     { id: 'data',       icon: <BarChart3 size={14}/>, label: 'Stats' },
+    { id: 'ai',         icon: <Sparkles size={14}/>, label: 'AI' },
   ];
 
   return (
@@ -246,6 +265,77 @@ export function SettingsModal() {
                       <li>Blitz auto-exports backups there when you use The Vault</li>
                       <li>Import on other devices with The Vault → Import Backup</li>
                     </ol>
+                  </div>
+                </>
+              )}
+
+              {/* AI */}
+              {tab === 'ai' && (
+                <>
+                  {/* Status badge */}
+                  <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium ${
+                    aiEnabled
+                      ? 'bg-green-400/8 border-green-400/20 text-green-400'
+                      : 'bg-amber-400/8 border-amber-400/20 text-amber-400'
+                  }`}>
+                    <Sparkles size={12}/>
+                    {aiEnabled ? 'AI Enhanced — using your API key' : 'Using built-in AI (rate limits may apply)'}
+                  </div>
+
+                  {/* Provider selector */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest mb-2 block">Provider</label>
+                    <div className="flex gap-2">
+                      {(['openai', 'anthropic', 'gemini'] as AIProvider[]).map(p => (
+                        <button key={p} type="button"
+                          onClick={() => { setAiProviderInput(p); setAiModelInput(DEFAULT_MODELS[p]); }}
+                          className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all border ${
+                            aiProviderInput === p
+                              ? 'bg-accent/15 text-accent border-accent/30'
+                              : 'bg-white/[0.04] text-muted border-transparent hover:border-white/10 hover:text-foreground'
+                          }`}>
+                          {p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : 'Gemini'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Model input */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest mb-2 block">Model</label>
+                    <input type="text" value={aiModelInput} onChange={e => setAiModelInput(e.target.value)}
+                      placeholder={DEFAULT_MODELS[aiProviderInput]}
+                      className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-foreground/80 placeholder:text-muted/30 focus:outline-none focus:border-accent/30 font-mono"/>
+                  </div>
+
+                  {/* API Key input */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest mb-2 block">API Key</label>
+                    <input type="password" value={aiKeyInput} onChange={e => setAiKeyInput(e.target.value)}
+                      placeholder={aiProviderInput === 'openai' ? 'sk-...' : aiProviderInput === 'anthropic' ? 'sk-ant-...' : 'AIzaSy...'}
+                      className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2 text-xs text-foreground/80 placeholder:text-muted/30 focus:outline-none focus:border-accent/30 font-mono"/>
+                  </div>
+
+                  {/* Privacy note */}
+                  <div className="text-[10px] text-muted/40 leading-relaxed bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
+                    Your key is stored locally and sent directly to the AI provider. Blitz never sees it.
+                  </div>
+
+                  {/* Save / Clear buttons */}
+                  <div className="flex gap-2">
+                    <button type="button"
+                      onClick={() => { if (aiKeyInput.trim()) { setUserApiKey(aiKeyInput.trim(), aiProviderInput, aiModelInput || DEFAULT_MODELS[aiProviderInput]); setSaved(true); setTimeout(() => setSaved(false), 1500); } }}
+                      disabled={!aiKeyInput.trim()}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-accent/12 border border-accent/25 text-xs font-semibold text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                      <Save size={12}/> Save Key
+                    </button>
+                    {aiEnabled && (
+                      <button type="button"
+                        onClick={() => { clearUserApiKey(); setAiKeyInput(''); setSaved(true); setTimeout(() => setSaved(false), 1500); }}
+                        className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs font-semibold text-muted/60 hover:text-red-400 hover:border-red-400/20 transition-all">
+                        Clear
+                      </button>
+                    )}
                   </div>
                 </>
               )}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { AIProvider } from '../lib/ai';
 
 interface SettingsState {
   accentColor: string;
@@ -21,6 +22,12 @@ interface SettingsState {
   toggleNotifications: () => void;
   toggleShowCompleted: () => void;
   setPomodoroMinutes: (m: number) => void;
+  userApiKey: string;
+  aiProvider: AIProvider;
+  aiModel: string;
+  aiEnabled: boolean;
+  setUserApiKey: (key: string, provider: AIProvider, model: string) => void;
+  clearUserApiKey: () => void;
   setAccentColor: (color: string) => void;
   setFabAlignment: (alignment: 'left' | 'right') => void;
   toggleSettingsModal: () => void;
@@ -48,6 +55,21 @@ export const useSettingsStore = create<SettingsState>()(
       notificationsEnabled: false,
       showCompletedInTimeline: false,
       pomodoroMinutes: 25,
+      userApiKey: '',
+      aiProvider: 'openai' as AIProvider,
+      aiModel: 'gpt-4o-mini',
+      aiEnabled: false,
+
+      setUserApiKey: (key, provider, model) => {
+        const settings = { provider, apiKey: key, model, enabled: true };
+        localStorage.setItem('blitz-ai-settings', JSON.stringify(settings));
+        set({ userApiKey: key, aiProvider: provider, aiModel: model, aiEnabled: true });
+      },
+
+      clearUserApiKey: () => {
+        localStorage.removeItem('blitz-ai-settings');
+        set({ userApiKey: '', aiEnabled: false });
+      },
 
       setAccentColor: (color) => set({ accentColor: color }),
 
@@ -102,6 +124,10 @@ export const useSettingsStore = create<SettingsState>()(
         notificationsEnabled: state.notificationsEnabled,
         showCompletedInTimeline: state.showCompletedInTimeline,
         pomodoroMinutes: state.pomodoroMinutes,
+        userApiKey: state.userApiKey,
+        aiProvider: state.aiProvider,
+        aiModel: state.aiModel,
+        aiEnabled: state.aiEnabled,
       }),
       onRehydrateStorage: () => (state) => {
         if (state?.accentColor) {

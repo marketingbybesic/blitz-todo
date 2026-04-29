@@ -4,18 +4,7 @@ import { X, Target, Zap, Brain, BarChart3, Minus, Plus, Circle, CheckCircle2, Tr
 import { useTaskStore } from '../store/useTaskStore';
 import { RichTextEditor } from './RichTextEditor';
 import { TimeTracker } from './TimeTracker';
-
-const GOOGLE_KEY = 'AIzaSyDPW0tks9GLHaT4Tk4NJBofUqz1qH8NgpE';
-
-async function gemini(prompt: string): Promise<string> {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_KEY}`,
-    { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:512} }) }
-  );
-  const d = await r.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-}
+import { callAI } from '../lib/ai';
 
 export function TaskDetailPane() {
   const tasks               = useTaskStore(s => s.tasks);
@@ -48,7 +37,7 @@ export function TaskDetailPane() {
     if (!task) return;
     setAiLoading('subtasks');
     try {
-      const resp = await gemini(`Break this task into 3-6 concrete subtasks. Task: "${task.title}". Context: ${task.content?.replace(/<[^>]*>/g,'') || 'none'}. Return ONLY a JSON array: ["subtask 1","subtask 2"]`);
+      const resp = await callAI(`Break this task into 3-6 concrete subtasks. Task: "${task.title}". Context: ${task.content?.replace(/<[^>]*>/g,'') || 'none'}. Return ONLY a JSON array: ["subtask 1","subtask 2"]`);
       const match = resp.match(/\[[\s\S]*?\]/);
       if (match) {
         const items: string[] = JSON.parse(match[0]);
@@ -63,7 +52,7 @@ export function TaskDetailPane() {
     if (!task) return;
     setAiLoading('time');
     try {
-      const resp = await gemini(`Estimate the time (in minutes) to complete this task for a professional. Task: "${task.title}". Subtasks: ${(task.checklist||[]).map(i=>i.title).join(', ')||'none'}. Return ONLY a JSON object: {"minutes": 45, "reason": "short explanation"}`);
+      const resp = await callAI(`Estimate the time (in minutes) to complete this task for a professional. Task: "${task.title}". Subtasks: ${(task.checklist||[]).map(i=>i.title).join(', ')||'none'}. Return ONLY a JSON object: {"minutes": 45, "reason": "short explanation"}`);
       const match = resp.match(/\{[\s\S]*?\}/);
       if (match) {
         const { minutes, reason } = JSON.parse(match[0]);

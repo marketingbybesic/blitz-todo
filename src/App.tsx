@@ -17,25 +17,43 @@ import { Onboarding }      from './components/Onboarding';
 export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('blitz-onboarded'));
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   const burstModeActive      = useTaskStore(s => s.burstModeActive);
   const currentView          = useTaskStore(s => s.currentView);
   const tasks                = useTaskStore(s => s.tasks);
   const morningTriageDismissed = useTaskStore(s => s.morningTriageDismissed);
   const openMorningTriage    = useTaskStore(s => s.openMorningTriage);
-  const openSchedulingWizard = useTaskStore(s => s.openSchedulingWizard);
   const markMorningTriageChecked = useTaskStore(s => s.markMorningTriageChecked);
   const toggleCaptureModal   = useTaskStore(s => s.toggleCaptureModal);
   const loadTasks            = useTaskStore(s => s.loadTasks);
   const loadZones            = useTaskStore(s => s.loadZones);
   const checkAndUpdateStreak = useSettingsStore(s => s.checkAndUpdateStreak);
+  const toggleSidebar        = useTaskStore(s => s.toggleSidebar);
 
-  // Boot data
+  // Boot data + initial sidebar collapse for compact viewports
   useEffect(() => {
     loadTasks();
     loadZones();
     checkAndUpdateStreak();
-  }, [loadTasks, loadZones, checkAndUpdateStreak]);
+    // Auto-collapse sidebar on narrow screens at boot
+    if (window.innerWidth < 1024 && useTaskStore.getState().isSidebarOpen) {
+      toggleSidebar();
+    }
+  }, [loadTasks, loadZones, checkAndUpdateStreak, toggleSidebar]);
+
+  // Responsive sidebar collapse on resize
+  useEffect(() => {
+    const handler = () => {
+      const w = window.innerWidth;
+      setWindowWidth(w);
+      if (w < 1024 && useTaskStore.getState().isSidebarOpen) {
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [toggleSidebar]);
 
   // Keyboard shortcuts
   useEffect(() => {

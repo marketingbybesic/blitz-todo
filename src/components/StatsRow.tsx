@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db } from '../lib/db';
 import { calculatePriority } from '../lib/priority';
-import type { Task } from '../types';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function StatsRow() {
@@ -13,6 +12,34 @@ export function StatsRow() {
     deepWorkCompletedToday: 0,
     priorityScore: 0,
   });
+
+  // Animated streak counter: counts up from 0 to streak on mount
+  const [displayStreak, setDisplayStreak] = useState(0);
+  const [displayFocus, setDisplayFocus] = useState(0);
+
+  useEffect(() => {
+    if (streak <= 0) { setDisplayStreak(0); return; }
+    let current = 0;
+    const step = Math.max(1, Math.round(streak / 20));
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= streak) { setDisplayStreak(streak); clearInterval(timer); }
+      else setDisplayStreak(current);
+    }, 40);
+    return () => clearInterval(timer);
+  }, [streak]);
+
+  useEffect(() => {
+    if (focusPoints <= 0) { setDisplayFocus(0); return; }
+    let current = 0;
+    const step = Math.max(1, Math.round(focusPoints / 20));
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= focusPoints) { setDisplayFocus(focusPoints); clearInterval(timer); }
+      else setDisplayFocus(current);
+    }, 40);
+    return () => clearInterval(timer);
+  }, [focusPoints]);
 
   useEffect(() => {
     const updateStats = async () => {
@@ -76,16 +103,16 @@ export function StatsRow() {
         <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
           Streak
         </div>
-        <div className="text-2xl font-bold text-orange-400">
-          {streak}d
+        <div className="text-2xl font-bold text-orange-400 tabular-nums">
+          {displayStreak}d
         </div>
       </div>
       <div className="bg-card/[0.02] border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center">
         <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
           Focus XP
         </div>
-        <div className="text-2xl font-bold text-green-400">
-          {focusPoints}
+        <div className="text-2xl font-bold text-green-400 tabular-nums">
+          {displayFocus}
         </div>
       </div>
     </div>
