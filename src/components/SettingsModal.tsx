@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Palette, Layout, Moon, Check, Save, Calendar, FolderSync, Bell, Timer, BarChart3, Upload, Sparkles } from 'lucide-react';
+import { X, Palette, Layout, Moon, Check, Save, Calendar, FolderSync, Bell, Timer, BarChart3, Upload, Sparkles, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { parseICal } from '../lib/ical';
 import type { AIProvider } from '../lib/ai';
+import { getGCalConfig, saveGCalConfig, clearGCalConfig, openGoogleAuthWindow, refreshGoogleCalendar } from '../lib/googleCalendar';
+import type { CalendarEvent } from '../lib/googleCalendar';
 
 const ACCENT_PRESETS = [
   { label: 'Purple', color: '#a855f7' },
@@ -44,6 +46,8 @@ export function SettingsModal() {
   const toggleStats   = useSettingsStore(s => s.toggleStats);
   const streak     = useSettingsStore(s => s.streak);
   const focusPoints = useSettingsStore(s => s.focusPoints);
+  const showBurstCelebration = useSettingsStore(s => s.showBurstCelebration);
+  const toggleBurstCelebration = useSettingsStore(s => s.toggleBurstCelebration);
   const aiEnabled      = useSettingsStore(s => s.aiEnabled);
   const aiProvider     = useSettingsStore(s => s.aiProvider);
   const aiModel        = useSettingsStore(s => s.aiModel);
@@ -60,6 +64,24 @@ export function SettingsModal() {
   const [aiProviderInput, setAiProviderInput] = useState<AIProvider>(aiProvider);
   const [aiModelInput, setAiModelInput] = useState(aiModel || DEFAULT_MODELS[aiProvider]);
   const [aiKeyInput, setAiKeyInput] = useState(userApiKey);
+  const [showKeyHelp, setShowKeyHelp] = useState(false);
+
+  // Google Calendar state
+  const [gcalClientId, setGcalClientId] = useState('');
+  const [gcalStatus, setGcalStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [gcalEmail, setGcalEmail] = useState('');
+  const [gcalError, setGcalError] = useState('');
+  const [lastSync, setLastSync] = useState('');
+
+  // Load existing GCal config on mount
+  useEffect(() => {
+    const config = getGCalConfig();
+    if (config) {
+      setGcalStatus('connected');
+      setGcalEmail(config.email ?? '');
+      setGcalClientId(config.clientId ?? '');
+    }
+  }, []);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && isOpen) toggle(); };
@@ -76,6 +98,34 @@ export function SettingsModal() {
     const events = parseICal(text);
     setCalendar(JSON.stringify(events), file.name.replace('.ics',''));
     setSaved(true); setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleGcalConnect = async () => {
+    if (!gcalClientId.trim()) return;
+    setGcalStatus('connecting');
+    setGcalError('');
+    try {
+      await openGoogleAuthWindow(gcalClientId.trim());
+      setGcalError('After authorizing, copy the access_token from the redirect URL and paste it below.');
+      setGcalStatus('idle');
+    } catch {
+      setGcalStatus('idle');
+      setGcalError('Could not open browser. Please use iCal import instead.');
+    }
+  };
+
+  const handleGcalSync = async () => {
+    const config = getGCalConfig();
+    if (!config) return;
+    try {
+      const events: CalendarEvent[] = await refreshGoogleCalendar(config);
+      setCalendar(JSON.stringify(events), 'Google Calendar');
+      setLastSync(new Date().toLocaleTimeString());
+      setSaved(true); setTimeout(() => setSaved(false), 2000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Sync failed';
+      setGcalError(msg);
+    }
   };
 
   const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
@@ -205,36 +255,109 @@ export function SettingsModal() {
                         animate={{ x: showCompleted ? 16 : 0 }} transition={{ type:'spring', stiffness:500, damping:30 }}/>
                     </button>
                   </div>
+                  <div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+                    <div>
+                      <p className="text-sm font-medium">Burst celebrations</p>
+                      <p className="text-[10px] text-muted/50 mt-0.5">Show "great job" messages after completing burst tasks</p>
+                    </div>
+                    <button type="button" onClick={() => flash(toggleBurstCelebration)}
+                      className={`w-9 h-5 rounded-full relative transition-colors ${showBurstCelebration ? 'bg-accent' : 'bg-white/10'}`}>
+                      <motion.div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white"
+                        animate={{ x: showBurstCelebration ? 16 : 0 }} transition={{ type:'spring', stiffness:500, damping:30 }}/>
+                    </button>
+                  </div>
                 </>
               )}
 
               {/* CALENDAR */}
               {tab === 'calendar' && (
                 <>
-                  <div className="text-xs text-muted/50 leading-relaxed bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
-                    Import a <code className="text-accent/70">.ics</code> calendar file to see your events in the Timeline. Works with Google Calendar, Apple Calendar, Outlook and any CalDAV provider.
-                  </div>
-                  <div>
-                    <button type="button" onClick={() => calInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent/12 border border-accent/25 text-sm font-semibold text-accent hover:bg-accent/20 transition-all">
-                      <Upload size={15}/> Import .ics Calendar File
-                    </button>
-                    <input ref={calInputRef} type="file" accept=".ics" onChange={handleCalImport} className="hidden"/>
-                  </div>
-                  {calName && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-green-400/8 border border-green-400/20 rounded-xl">
-                      <Check size={13} className="text-green-400"/>
-                      <div>
-                        <p className="text-xs font-medium text-green-400">{calName}</p>
-                        <p className="text-[10px] text-muted/50">Calendar imported — events visible in Timeline</p>
+                  {/* Section 1: Google Calendar OAuth */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-6 h-6 rounded flex items-center justify-center bg-white/[0.05]">
+                        <span className="text-[11px] font-black" style={{ color: '#4285F4' }}>G</span>
                       </div>
-                      <button type="button" onClick={() => { setCalendar('', ''); }}
-                        className="ml-auto text-muted/40 hover:text-foreground transition-colors"><X size={12}/></button>
+                      <span className="text-sm font-semibold">Google Calendar</span>
+                      {gcalStatus === 'connected' && (
+                        <span className="ml-auto text-[10px] font-medium text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Connected</span>
+                      )}
                     </div>
-                  )}
-                  <div className="text-[10px] text-muted/30 leading-relaxed">
-                    To export from Google Calendar: Calendar settings → Export → download .ics file<br/>
-                    Apple Calendar: File → Export → Export… (saves .ics)
+
+                    {gcalStatus === 'connected' ? (
+                      <div className="space-y-2">
+                        <div className="text-xs text-muted/50">Syncing as {gcalEmail}</div>
+                        <div className="text-[10px] text-muted/30">{lastSync ? `Last synced: ${lastSync}` : 'Events will appear in Timeline'}</div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={handleGcalSync}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all">
+                            Sync Now
+                          </button>
+                          <button type="button" onClick={() => { clearGCalConfig(); setGcalStatus('idle'); setGcalEmail(''); }}
+                            className="px-3 py-1.5 rounded-lg text-xs text-muted/50 border border-white/[0.05] hover:text-foreground transition-all">
+                            Disconnect
+                          </button>
+                        </div>
+                        {gcalError && <p className="text-xs text-red-400/80">{gcalError}</p>}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-xs text-muted/50 leading-relaxed">
+                          <p className="font-semibold text-foreground/70 mb-1">How to connect:</p>
+                          <ol className="list-decimal list-inside space-y-1">
+                            <li>Go to <span className="text-accent/80">console.cloud.google.com</span></li>
+                            <li>Create a project → Enable Calendar API</li>
+                            <li>OAuth 2.0 → Create credentials (Web app type)</li>
+                            <li>Add <span className="font-mono text-accent/60">http://localhost:7832</span> as redirect URI</li>
+                            <li>Paste your Client ID below</li>
+                          </ol>
+                        </div>
+                        <input
+                          type="text"
+                          value={gcalClientId}
+                          onChange={e => setGcalClientId(e.target.value)}
+                          placeholder="your-client-id.apps.googleusercontent.com"
+                          className="w-full bg-black/60 border border-white/[0.07] rounded-xl px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted/25 focus:outline-none focus:border-accent/40 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          disabled={!gcalClientId.trim() || gcalStatus === 'connecting'}
+                          onClick={handleGcalConnect}
+                          className="w-full py-2 rounded-xl text-xs font-semibold bg-accent text-black hover:opacity-90 disabled:opacity-30 transition-all"
+                        >
+                          {gcalStatus === 'connecting' ? 'Opening browser...' : 'Connect Google Calendar'}
+                        </button>
+                        {gcalError && <p className="text-xs text-red-400/80">{gcalError}</p>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="h-px bg-white/[0.05]"/>
+
+                  {/* Section 2: iCal import (secondary option) */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold text-muted/40 uppercase tracking-widest">Or import iCal file</p>
+                    <div className="text-xs text-muted/40 leading-relaxed">
+                      Works with Apple Calendar, Outlook, and any CalDAV provider.
+                    </div>
+                    <div>
+                      <button type="button" onClick={() => calInputRef.current?.click()}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-xs font-semibold text-muted/60 hover:text-foreground hover:border-white/[0.12] transition-all">
+                        <Upload size={13}/> Import .ics Calendar File
+                      </button>
+                      <input ref={calInputRef} type="file" accept=".ics" onChange={handleCalImport} className="hidden"/>
+                    </div>
+                    {calName && (
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-green-400/8 border border-green-400/20 rounded-xl">
+                        <Check size={13} className="text-green-400"/>
+                        <div>
+                          <p className="text-xs font-medium text-green-400">{calName}</p>
+                          <p className="text-[10px] text-muted/50">Calendar imported — events visible in Timeline</p>
+                        </div>
+                        <button type="button" onClick={() => { setCalendar('', ''); }}
+                          className="ml-auto text-muted/40 hover:text-foreground transition-colors"><X size={12}/></button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -280,6 +403,44 @@ export function SettingsModal() {
                   }`}>
                     <Sparkles size={12}/>
                     {aiEnabled ? 'AI Enhanced — using your API key' : 'Using built-in AI (rate limits may apply)'}
+                  </div>
+
+                  {/* BYOK help accordion */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyHelp(h => !h)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-accent/5 border border-accent/15 text-xs text-accent/70 hover:text-accent transition-all"
+                    >
+                      <span>How do I get an API key?</span>
+                      <ChevronDown size={12} className={`transition-transform ${showKeyHelp ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {showKeyHelp && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 mt-1 text-xs text-muted/60 space-y-2">
+                            <div>
+                              <span className="font-semibold text-foreground/70">OpenAI (recommended):</span>
+                              <p>platform.openai.com → API Keys → Create key. Free $5 credit. Best for GPT-4o-mini.</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-foreground/70">Anthropic:</span>
+                              <p>console.anthropic.com → API Keys. Claude Haiku is fast and affordable.</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-foreground/70">Google Gemini:</span>
+                              <p>aistudio.google.com/apikey → Create API key. Free tier included.</p>
+                            </div>
+                            <p className="text-muted/40 pt-1 border-t border-white/[0.04]">Your key is stored only on this device. Blitz never sees it.</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Provider selector */}

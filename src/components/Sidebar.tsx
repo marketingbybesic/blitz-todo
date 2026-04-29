@@ -67,15 +67,16 @@ export function Sidebar() {
                 <button
                   key={viewId}
                   type="button"
+                  data-tooltip={label}
                   onClick={() => setCurrentView(viewId)}
-                  className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-left ${
+                  className={`sidebar-nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-left ${
                     active
                       ? 'bg-accent/10 text-accent'
                       : 'text-muted hover:text-foreground hover:bg-background/60'
                   }`}
                 >
                   <Icon size={16} className="flex-shrink-0" />
-                  <span>{label}</span>
+                  <span className="sidebar-label">{label}</span>
                 </button>
               );
             })}
@@ -88,8 +89,8 @@ export function Sidebar() {
               <div className="flex items-center gap-3 px-3 py-2 mb-1">
                 <Flame size={13} className="text-orange-400 flex-shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-[10px] text-muted/50">Streak · Focus XP</div>
-                  <div className="text-xs font-bold">
+                  <div className="text-[10px] text-muted/50 sidebar-label">Streak · Focus XP</div>
+                  <div className="text-xs font-bold sidebar-label">
                     <span className="text-orange-400">{streak}d</span>
                     <span className="text-muted/30 mx-1">·</span>
                     <span className="text-accent">{focusPoints} XP</span>
@@ -99,11 +100,12 @@ export function Sidebar() {
             )}
             <button
               type="button"
+              data-tooltip="Settings"
               onClick={toggleSettingsModal}
-              className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-background/60 transition-all duration-200"
+              className="sidebar-nav-item flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-background/60 transition-all duration-200"
             >
               <Settings size={16} />
-              <span>Settings</span>
+              <span className="sidebar-label">Settings</span>
             </button>
           </div>
         </motion.aside>

@@ -159,9 +159,13 @@ function ProjectDetail({ zone, tasks, onBack, updateTask, completeTask, addTask,
                 </AnimatePresence>
 
                 {colTasks.length === 0 && addingCol !== col.id && (
-                  <div className="flex-1 flex items-center justify-center text-[10px] text-muted/20 py-6 border border-dashed border-white/[0.04] rounded-lg">
-                    Drop here
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAddingCol(col.id)}
+                    className="w-full py-3 text-xs text-muted/25 hover:text-muted/50 border border-dashed border-white/[0.04] hover:border-white/[0.08] rounded-xl transition-all text-center"
+                  >
+                    + Add task
+                  </button>
                 )}
               </div>
             </div>
@@ -295,10 +299,22 @@ export function KanbanView() {
         )}
 
         {zones.length === 0 && (
-          <div className="text-center py-12 text-muted/30">
-            <FolderOpen size={32} className="mx-auto mb-3 opacity-20" />
-            <p className="text-sm">No projects yet</p>
-            <p className="text-xs mt-1">Create a project to organise your tasks</p>
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-16">
+            <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+              <FolderOpen size={24} className="text-accent/60" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground/80">No projects yet</p>
+              <p className="text-xs text-muted/40 mt-1 max-w-xs">Create a project to organize tasks by context. Each project gets its own Kanban board.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-accent text-black hover:opacity-90 transition-all"
+              style={{ boxShadow: '0 0 20px color-mix(in srgb, var(--accent) 30%, transparent)' }}
+            >
+              <Plus size={14} /> Create First Project
+            </button>
           </div>
         )}
       </div>

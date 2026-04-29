@@ -117,3 +117,83 @@ textarea, input[type="text"], input[type="email"], input[type="password"] {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Light mode: white/opacity classes become dark instead */
+.light .text-white\/\[0\.07\],
+.light .text-white\/10,
+.light .text-white\/20,
+.light .text-white\/30,
+.light .text-white\/40,
+.light .text-white\/50,
+.light .text-white\/60,
+.light .text-white\/70 {
+  color: rgba(0,0,0,0.7) !important;
+}
+.light .bg-white\/\[0\.04\],
+.light .bg-white\/\[0\.05\],
+.light .bg-white\/\[0\.06\],
+.light .bg-white\/\[0\.07\],
+.light .bg-white\/\[0\.08\] {
+  background-color: rgba(0,0,0,0.04) !important;
+}
+.light .border-white\/\[0\.06\],
+.light .border-white\/\[0\.07\],
+.light .border-white\/\[0\.08\],
+.light .border-white\/\[0\.10\] {
+  border-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Sidebar mode: narrow window layout */
+.sidebar-mode .sidebar-label { display: none; }
+.sidebar-mode .sidebar-nav-item { justify-content: center; padding: 0.5rem; }
+.sidebar-mode aside { min-width: 52px; max-width: 52px; }
+
+/* Tooltip */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  pointer-events: none;
+  z-index: 9999;
+  letter-spacing: 0.01em;
+}
+
+/* Onboarding animations */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.onboarding-bg-animated {
+  background: linear-gradient(135deg, #000000 0%, #0a0014 30%, #000000 60%, #060010 100%);
+  background-size: 300% 300%;
+  animation: gradientShift 8s ease infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) scale(1); opacity: 0.6; }
+  50% { transform: translateY(-20px) scale(1.05); opacity: 1; }
+}
+.onboarding-logo-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+.onboarding-glow-pulse {
+  animation: pulseGlow 3s ease-in-out infinite;
+}

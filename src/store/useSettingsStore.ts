@@ -17,6 +17,8 @@ interface SettingsState {
   notificationsEnabled: boolean;
   showCompletedInTimeline: boolean;
   pomodoroMinutes: number;
+  showBurstCelebration: boolean;
+  toggleBurstCelebration: () => void;
   setCalendarEvents: (json: string, name: string) => void;
   setSyncFolder: (path: string) => void;
   toggleNotifications: () => void;
@@ -55,6 +57,7 @@ export const useSettingsStore = create<SettingsState>()(
       notificationsEnabled: false,
       showCompletedInTimeline: false,
       pomodoroMinutes: 25,
+      showBurstCelebration: true,
       userApiKey: '',
       aiProvider: 'openai' as AIProvider,
       aiModel: 'gpt-4o-mini',
@@ -85,6 +88,7 @@ export const useSettingsStore = create<SettingsState>()(
       setSyncFolder: (path) => set({ syncFolder: path }),
       toggleNotifications: () => set(s => ({ notificationsEnabled: !s.notificationsEnabled })),
       toggleShowCompleted: () => set(s => ({ showCompletedInTimeline: !s.showCompletedInTimeline })),
+      toggleBurstCelebration: () => set(s => ({ showBurstCelebration: !s.showBurstCelebration })),
       setPomodoroMinutes: (m) => set({ pomodoroMinutes: m }),
 
       applyAccentColor: (color) => {
@@ -124,6 +128,7 @@ export const useSettingsStore = create<SettingsState>()(
         notificationsEnabled: state.notificationsEnabled,
         showCompletedInTimeline: state.showCompletedInTimeline,
         pomodoroMinutes: state.pomodoroMinutes,
+        showBurstCelebration: state.showBurstCelebration,
         userApiKey: state.userApiKey,
         aiProvider: state.aiProvider,
         aiModel: state.aiModel,

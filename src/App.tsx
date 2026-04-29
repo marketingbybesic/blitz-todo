@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { useTaskStore }    from './store/useTaskStore';
 import { useSettingsStore } from './store/useSettingsStore';
+import { startClaudeCodeBridge } from './lib/claudeCodeIntegration';
 import { BlitzWidget }     from './components/BlitzWidget';
 import { Sidebar }         from './components/Sidebar';
 import { Dashboard }       from './components/Dashboard';
@@ -17,7 +18,9 @@ import { Onboarding }      from './components/Onboarding';
 export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('blitz-onboarded'));
+  const [hasExitedBurst, setHasExitedBurst] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [isSidebarMode, setIsSidebarMode] = useState(window.innerWidth < 500);
 
   const burstModeActive      = useTaskStore(s => s.burstModeActive);
   const currentView          = useTaskStore(s => s.currentView);
@@ -30,12 +33,14 @@ export default function App() {
   const loadZones            = useTaskStore(s => s.loadZones);
   const checkAndUpdateStreak = useSettingsStore(s => s.checkAndUpdateStreak);
   const toggleSidebar        = useTaskStore(s => s.toggleSidebar);
+  const toggleSettingsModal  = useSettingsStore(s => s.toggleSettingsModal);
 
   // Boot data + initial sidebar collapse for compact viewports
   useEffect(() => {
     loadTasks();
     loadZones();
     checkAndUpdateStreak();
+    startClaudeCodeBridge();
     // Auto-collapse sidebar on narrow screens at boot
     if (window.innerWidth < 1024 && useTaskStore.getState().isSidebarOpen) {
       toggleSidebar();
@@ -47,6 +52,7 @@ export default function App() {
     const handler = () => {
       const w = window.innerWidth;
       setWindowWidth(w);
+      setIsSidebarMode(w < 500);
       if (w < 1024 && useTaskStore.getState().isSidebarOpen) {
         toggleSidebar();
       }
@@ -58,18 +64,16 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen(p => !p);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === ' ') {
-        e.preventDefault();
-        toggleCaptureModal();
-      }
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); setIsCommandPaletteOpen(p => !p); }
+      if (mod && e.shiftKey && e.key === ' ') { e.preventDefault(); toggleCaptureModal(); }
+      if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); toggleCaptureModal(); }
+      if (mod && e.key === ',') { e.preventDefault(); toggleSettingsModal(); }
+      if (e.key === 'Escape' && isCommandPaletteOpen) { setIsCommandPaletteOpen(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [toggleCaptureModal]);
+  }, [toggleCaptureModal, toggleSettingsModal, isCommandPaletteOpen]);
 
   // Morning triage
   useEffect(() => {
@@ -84,8 +88,11 @@ export default function App() {
     }
   }, [currentView, morningTriageDismissed, tasks.length, openMorningTriage, markMorningTriageChecked]);
 
-  // Tauri window sizing (only in Tauri context)
+  // Tauri window sizing + track burst mode exit
   useEffect(() => {
+    if (!burstModeActive) {
+      setHasExitedBurst(true);
+    }
     if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) return;
     const win = getCurrentWindow();
     if (burstModeActive) {
@@ -96,8 +103,8 @@ export default function App() {
     } else {
       win.setAlwaysOnTop(false);
       win.setDecorations(true);
-      win.setSize(new LogicalSize(1200, 800));
-      win.setMinSize(new LogicalSize(900, 600));
+      win.setSize(new LogicalSize(1100, 800));
+      win.setMinSize(new LogicalSize(320, 400));
     }
   }, [burstModeActive]);
 
@@ -105,10 +112,10 @@ export default function App() {
 
   return (
     <>
-      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
+      {showOnboarding && !hasExitedBurst && <Onboarding onComplete={() => setShowOnboarding(false)} />}
 
       {/* Desktop layout: flex row, sidebar + main — no fixed positioning */}
-      <div className="flex h-screen w-screen overflow-hidden bg-background">
+      <div className={`flex h-screen w-screen overflow-hidden bg-background${isSidebarMode ? ' sidebar-mode' : ''}`}>
         {/* Sidebar: flex item, only visible on md+ */}
         <Sidebar />
 

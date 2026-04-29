@@ -1,34 +1,64 @@
 import { useEffect, useMemo, useState } from 'react';
-import { GripHorizontal, ArrowLeft, CheckCircle2, Pause, Play, RotateCcw, Zap, Brain, Clock } from 'lucide-react';
+import { GripHorizontal, ArrowLeft, CheckCircle2, Pause, Play, RotateCcw, Zap, Brain, Clock, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '../store/useTaskStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import type { Task } from '../types';
 
-// ADHD-optimized task selection: 2 quick wins + 1 big task
+// Dopamine-stacked task selection: quick wins first, build to complex
 function selectBlitzQueue(tasks: Task[]): Task[] {
   const active = tasks.filter(t => t.status !== 'done');
-  const quick  = active.filter(t => t.estimatedMinutes <= 15).sort((a, b) => {
-    const score = (t: Task) => (t.impact === 'high' ? 3 : t.impact === 'medium' ? 2 : 1) + (t.isTarget ? 5 : 0);
-    return score(b) - score(a);
-  }).slice(0, 2);
-  const big = active.filter(t => t.estimatedMinutes > 15 && !quick.includes(t)).sort((a, b) => {
-    const score = (t: Task) => (t.impact === 'high' ? 3 : t.impact === 'medium' ? 2 : 1) + (t.isTarget ? 5 : 0);
-    return score(b) - score(a);
-  }).slice(0, 1);
-  return [...quick, ...big];
+  if (active.length === 0) return [];
+
+  // Score each task
+  const scored = active.map(t => {
+    const impactScore = t.impact === 'high' ? 10 : t.impact === 'medium' ? 5 : 2;
+    const targetBonus = t.isTarget ? 8 : 0;
+    const urgencyScore = t.dueDate
+      ? Math.max(0, 10 - Math.floor((new Date(t.dueDate).getTime() - Date.now()) / 86400000))
+      : 0;
+    // Prefer shorter tasks early (dopamine hit) but don't ignore big ones
+    const quickScore = t.estimatedMinutes <= 15 ? 12 : t.estimatedMinutes <= 30 ? 4 : 0;
+    return { task: t, score: impactScore + targetBonus + urgencyScore + quickScore };
+  }).sort((a, b) => b.score - a.score);
+
+  // Dopamine stack: start with quickest high-value tasks, build up
+  const quick = scored.filter(s => s.task.estimatedMinutes <= 15).slice(0, 2).map(s => s.task);
+  const medium = scored.filter(s => s.task.estimatedMinutes > 15 && s.task.estimatedMinutes <= 45 && !quick.includes(s.task)).slice(0, 1).map(s => s.task);
+  const big = scored.filter(s => s.task.estimatedMinutes > 45 && !quick.includes(s.task) && !medium.includes(s.task)).slice(0, 1).map(s => s.task);
+
+  // Order: quick wins → medium → big (dopamine escalation)
+  const queue = [...quick, ...medium, ...big].slice(0, 3);
+  // If we have fewer than 2 quick wins, fill from any tasks
+  if (queue.length < 2) {
+    const extras = scored.filter(s => !queue.includes(s.task)).slice(0, 2 - queue.length).map(s => s.task);
+    queue.push(...extras);
+  }
+  return queue;
 }
+
+const CELEBRATIONS = [
+  { emoji: '⚡', text: 'Done! Keep the momentum.', sub: 'Next task loaded.' },
+  { emoji: '🔥', text: "That's what Blitz is about.", sub: "You're on fire." },
+  { emoji: '✨', text: 'Great work!', sub: 'One task closer.' },
+  { emoji: '💜', text: 'Done!', sub: 'Flow state achieved.' },
+  { emoji: '🚀', text: 'Crushed it.', sub: 'Next up.' },
+];
 
 export function BlitzWidget() {
   const tasks        = useTaskStore(s => s.tasks);
   const loadTasks    = useTaskStore(s => s.loadTasks);
   const completeTask = useTaskStore(s => s.completeTask);
   const toggleBlitzMode = useTaskStore(s => s.toggleBlitzMode);
+  const showCelebration = useSettingsStore(s => s.showBurstCelebration);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [timerActive, setTimerActive]   = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [timerMode, setTimerMode]       = useState<'focus' | 'break'>('focus');
   const [celebrating, setCelebrating]   = useState(false);
+  const [celebIdx] = useState(() => Math.floor(Math.random() * CELEBRATIONS.length));
+  const cel = CELEBRATIONS[celebIdx % CELEBRATIONS.length];
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
@@ -82,15 +112,26 @@ export function BlitzWidget() {
         </button>
       </div>
 
-      <main className="flex-1 flex flex-col px-5 py-4 gap-4 overflow-hidden">
+      <main className="flex-1 flex flex-col px-5 py-4 gap-4 overflow-hidden relative">
         {/* Celebrate */}
         <AnimatePresence>
-          {celebrating && (
-            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center z-10 bg-black/80">
+          {celebrating && showCelebration && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.1, opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center z-10 bg-black/90 backdrop-blur-sm rounded-2xl"
+            >
               <div className="text-center">
-                <div className="text-4xl mb-2">⚡</div>
-                <div className="text-sm font-bold text-accent">Done!</div>
+                <motion.div
+                  className="text-4xl mb-2"
+                  animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 0.5, ease: 'easeInOut' }}
+                >
+                  {cel.emoji}
+                </motion.div>
+                <div className="text-sm font-bold text-accent mb-0.5">{cel.text}</div>
+                <div className="text-xs text-muted/50">{cel.sub}</div>
               </div>
             </motion.div>
           )}
@@ -106,13 +147,18 @@ export function BlitzWidget() {
           <>
             {/* Task queue chips */}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {queue.map((t, i) => (
-                <button key={t.id} type="button" onClick={() => { setCurrentIdx(i); setTimerActive(false); setTimerSeconds(25*60); setTimerMode('focus'); }}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${i === currentIdx ? 'bg-accent/20 text-accent border border-accent/30' : 'bg-white/[0.04] text-muted border border-transparent'}`}>
-                  {t.estimatedMinutes <= 15 ? <Zap size={9} /> : <Brain size={9} />}
-                  {t.estimatedMinutes}m
-                </button>
-              ))}
+              {queue.map((t, i) => {
+                const label = t.estimatedMinutes <= 15 ? 'Quick' : t.estimatedMinutes <= 45 ? 'Focus' : 'Deep';
+                const Icon = t.estimatedMinutes <= 15 ? Zap : t.estimatedMinutes <= 45 ? Brain : Target;
+                return (
+                  <button key={t.id} type="button"
+                    onClick={() => { setCurrentIdx(i); setTimerActive(false); setTimerSeconds(25*60); setTimerMode('focus'); }}
+                    data-tooltip={`${label} · ${t.estimatedMinutes}min`}
+                    className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all ${i === currentIdx ? 'bg-accent/20 text-accent border border-accent/30' : 'bg-white/[0.04] text-muted/50 border border-white/[0.05]'}`}>
+                    <Icon size={9}/> {label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Current task */}
@@ -125,7 +171,8 @@ export function BlitzWidget() {
                 <div className="flex items-center gap-3 text-[10px] text-muted/50">
                   <span className="flex items-center gap-1"><Clock size={9}/>{current.estimatedMinutes}m</span>
                   <span className="capitalize">{current.impact} impact</span>
-                  {current.estimatedMinutes <= 15 && <span className="text-accent/70">Quick win</span>}
+                  {current.estimatedMinutes <= 15 && <span className="text-accent/70">Quick Win 🏃</span>}
+                  {current.estimatedMinutes > 45 && <span className="text-purple-400/70">Deep Work 🧠</span>}
                 </div>
               </div>
             )}

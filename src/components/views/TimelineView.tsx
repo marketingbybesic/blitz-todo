@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarOff, AlertCircle, Sun, Sunrise, Clock } from 'lucide-react';
+import { CalendarOff, AlertCircle, Sun, Sunrise, Clock, Plus } from 'lucide-react';
 import { TaskItem } from '../TaskItem';
 import { FilterBar } from '../FilterBar';
 import { TimelineControls } from '../TimelineControls';
@@ -74,6 +74,31 @@ export function TimelineView() {
   const timelineSort        = useTaskStore(s => s.timelineSort);
   const timelineGroupByDate = useTaskStore(s => s.timelineGroupByDate);
   const showStatsAndCompleted = useSettingsStore(s => s.showStatsAndCompleted);
+  const addTask             = useTaskStore(s => s.addTask);
+  const toggleCaptureModal  = useTaskStore(s => s.toggleCaptureModal);
+
+  const [quickTitle, setQuickTitle] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleQuickAdd = async () => {
+    const title = quickTitle.trim();
+    if (!title) return;
+    await addTask({
+      title,
+      energyLevel: 'light-work',
+      estimatedMinutes: 15,
+      isTarget: false,
+      status: 'todo',
+      impact: 'medium',
+      dueDate: undefined,
+      content: undefined,
+      zoneId: undefined,
+      startDate: undefined,
+      checklist: [],
+    });
+    setQuickTitle('');
+    setIsAdding(false);
+  };
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
@@ -141,6 +166,41 @@ export function TimelineView() {
         <TimelineControls />
       </div>
 
+      {/* Quick-add bar */}
+      <div className="px-6 pt-4 pb-2">
+        {isAdding ? (
+          <div className="flex items-center gap-2 bg-black/50 border border-accent/30 rounded-xl px-3 py-2">
+            <input
+              autoFocus
+              type="text"
+              value={quickTitle}
+              onChange={e => setQuickTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleQuickAdd();
+                if (e.key === 'Escape') { setIsAdding(false); setQuickTitle(''); }
+              }}
+              placeholder="What needs to be done? (Enter to add, Esc to cancel)"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/30 focus:outline-none"
+            />
+            <button type="button" onClick={handleQuickAdd}
+              disabled={!quickTitle.trim()}
+              className="text-xs font-semibold text-accent disabled:opacity-30 hover:opacity-80">
+              Add
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-xl text-sm text-muted/40 hover:text-muted/70 hover:bg-white/[0.03] border border-transparent hover:border-white/[0.05] transition-all group"
+          >
+            <Plus size={14} className="text-muted/30 group-hover:text-accent transition-colors" />
+            Add task to Timeline...
+            <span className="ml-auto text-[10px] font-mono text-muted/20">⌘K for AI capture</span>
+          </button>
+        )}
+      </div>
+
       <FilterBar />
 
       {/* Calendar events for today */}
@@ -166,8 +226,16 @@ export function TimelineView() {
       )}
 
       {empty ? (
-        <div className="text-sm text-muted/60 tracking-wide mt-8">
+        <div className="flex flex-col items-center gap-4 mt-12 text-center">
           <Typewriter />
+          <p className="text-xs text-muted/30 max-w-xs">No tasks scheduled. Use the bar above to add your first task, or press ⌘K for AI-powered capture.</p>
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all"
+          >
+            <Plus size={14} /> Add first task
+          </button>
         </div>
       ) : (
         <AnimatePresence mode="wait">

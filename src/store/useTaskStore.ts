@@ -60,6 +60,20 @@ interface TaskState {
   dismissMorningTriage: () => void;
   markMorningTriageChecked: () => void;
   openSchedulingWizard: () => void;
+  // Multi-dimension sort (Excel-style)
+  sortConfig: Array<{ field: 'priority' | 'dueDate' | 'estimatedMinutes' | 'impact' | 'energyLevel'; direction: 'asc' | 'desc' }>;
+  setSortConfig: (config: Array<{ field: 'priority' | 'dueDate' | 'estimatedMinutes' | 'impact' | 'energyLevel'; direction: 'asc' | 'desc' }>) => void;
+  addSort: (field: 'priority' | 'dueDate' | 'estimatedMinutes' | 'impact' | 'energyLevel') => void;
+  removeSort: (field: string) => void;
+  toggleSortDirection: (field: string) => void;
+  // Filter values (multi-select style)
+  filterValues: {
+    impact: ('high' | 'medium' | 'low')[];
+    energyLevel: ('deep-work' | 'light-work')[];
+    status: ('todo' | 'in_progress' | 'done')[];
+  };
+  toggleFilterValue: (category: 'impact' | 'energyLevel' | 'status', value: string) => void;
+  clearAllFilters: () => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -84,6 +98,8 @@ export const useTaskStore = create<TaskState>()(
     zones: [],
     lastCompletedTask: null,
     _undoTimer: null as ReturnType<typeof setTimeout> | null,
+    sortConfig: [],
+    filterValues: { impact: [], energyLevel: [], status: [] },
 
     loadTasks: async () => {
       const allTasks = await db.tasks.toArray();
@@ -308,6 +324,32 @@ export const useTaskStore = create<TaskState>()(
       set({ isMorningTriageOpen: true, morningTriageDismissed: true });
     },
 
+    setSortConfig: (config) => set({ sortConfig: config }),
+
+    addSort: (field) => set(s => {
+      const existing = s.sortConfig.find(c => c.field === field);
+      if (existing) return { sortConfig: s.sortConfig.map(c => c.field === field ? { ...c, direction: c.direction === 'asc' ? 'desc' : 'asc' } : c) as typeof s.sortConfig };
+      return { sortConfig: [...s.sortConfig, { field, direction: 'desc' as const }] };
+    }),
+
+    removeSort: (field) => set(s => ({ sortConfig: s.sortConfig.filter(c => c.field !== field) })),
+
+    toggleSortDirection: (field) => set(s => ({
+      sortConfig: s.sortConfig.map(c => c.field === field ? { ...c, direction: c.direction === 'asc' ? 'desc' : 'asc' } : c) as typeof s.sortConfig,
+    })),
+
+    toggleFilterValue: (category, value) => set(s => {
+      const current = s.filterValues[category] as string[];
+      const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+      return { filterValues: { ...s.filterValues, [category]: next } };
+    }),
+
+    clearAllFilters: () => set({
+      sortConfig: [],
+      filterValues: { impact: [], energyLevel: [], status: [] },
+      activeFilters: { deepWork: false, highImpact: false, shortTask: false, longTask: false },
+    }),
+
     toggleFilter: (type) => {
       set((state) => ({
         activeFilters: {
@@ -339,6 +381,8 @@ export const useTaskStore = create<TaskState>()(
       timelineGroupByDate: state.timelineGroupByDate,
       isSidebarOpen: state.isSidebarOpen,
       currentView: state.currentView,
+      sortConfig: state.sortConfig,
+      filterValues: state.filterValues,
     }),
     onRehydrateStorage: () => (state) => {
       if (state) {
